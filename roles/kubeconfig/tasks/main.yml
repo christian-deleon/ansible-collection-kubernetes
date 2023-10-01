@@ -1,0 +1,10 @@
+---
+- name: Pip install pyyaml
+  pip:
+    name: pyyaml
+    state: present
+
+- name: Set kubeconfig context
+  kubeconfig_manager:
+    kubeconfig_path: "{{ kubeconfig_dir }}/{{ context_name }}-config"
+    context_name: "{{ context_name }}"

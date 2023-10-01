@@ -1,0 +1,93 @@
+---
+- name: Configure controlplane master
+  block:
+  - name: Resetting Kubernetes component
+    ansible.builtin.command: "kubeadm reset --force"
+    register: reset_cluster
+    changed_when: false
+
+  - name: Initializing Kubernetes cluster
+    ansible.builtin.command: |
+      kubeadm init \
+        --kubernetes-version=v{{ kubernetes_version }} \
+        --pod-network-cidr={{ pod_network_cidr }} \
+        --control-plane-endpoint={{ kube_apiserver_ip }}:6443 \
+        --upload-certs
+    when: reset_cluster is succeeded
+    register: init_cluster
+
+  - name: Creating ~/.kube
+    ansible.builtin.file:
+      path: "/root/.kube"
+      state: directory
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: Copy kubectl config to root directory
+    ansible.builtin.copy:
+      src: /etc/kubernetes/admin.conf
+      remote_src: true
+      dest: /root/.kube/config
+      owner: root
+      group: root
+      mode: 0600
+
+  - name: Copy kubectl config to temporary directory
+    ansible.builtin.copy:
+      src: /root/.kube/config
+      dest: /tmp/kubectl-config
+      remote_src: true
+      owner: "{{ ansible_user }}"
+      group: "{{ ansible_user }}"
+      mode: 0600
+
+  - name: Retrieve kubectl config from remote host
+    ansible.builtin.fetch:
+      src: /tmp/kubectl-config
+      dest: "~/.kube/{{ context_name }}-config"
+      flat: true
+      mode: 0600
+    when: context_name is defined
+
+  - name: Retrieve kubectl config from remote host
+    ansible.builtin.fetch:
+      src: /tmp/kubectl-config
+      dest: "~/.kube/config"
+      flat: true
+      mode: 0600
+    when: context_name is not defined
+  when: inventory_hostname in groups['controlplane_master']
+
+- name: Configure controlplane slave
+  block:
+  - name: Set the controlplane master ip
+    ansible.builtin.set_fact:
+      controlplane_master_ip: "{{ hostvars[groups['controlplane_master'][0]].guest.ipAddress }}"
+
+  - name: Get join command
+    ansible.builtin.command: kubeadm token create --print-join-command
+    register: join_command
+    delegate_to: "{{ controlplane_master_ip }}"
+    when: true
+    run_once: true
+
+  - name: Get certificate key
+    ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+    register: certificate_key_output
+    delegate_to: "{{ controlplane_master_ip }}"
+    when: true
+    run_once: true
+
+  - name: Set certificate key
+    ansible.builtin.set_fact:
+      certificate_key: "{{ certificate_key_output.stdout_lines[-1] }}"
+
+  - name: Add certificate key to join command
+    ansible.builtin.set_fact:
+      join_command: "{{ join_command.stdout }} --certificate-key {{ certificate_key }}"
+
+  - name: Run join command
+    ansible.builtin.command: "{{ join_command }} --control-plane"
+    when: true
+  when: inventory_hostname in groups['controlplane_slave']

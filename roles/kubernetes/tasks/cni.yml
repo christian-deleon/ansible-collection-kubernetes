@@ -1,0 +1,46 @@
+---
+- name: Install python3-pip
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+
+- name: Pip install kubernetes
+  ansible.builtin.pip:
+    name: kubernetes
+    state: present
+
+- name: Download Calico manifest
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/projectcalico/calico/v{{ calico_version }}/manifests/calico.yaml
+    dest: /tmp/calico.yaml
+  run_once: true
+  when: cni == "calico"
+
+- name: Install Calico
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/calico.yaml
+  run_once: true
+  when: cni == "calico"
+
+- name: Download Flannel manifest
+  ansible.builtin.get_url:
+    url: https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+    dest: /tmp/kube-flannel.yml
+  run_once: true
+  when: cni == "flannel"
+
+- name: Install Flannel
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/kube-flannel.yml
+  run_once: true
+  when: cni == "flannel"
+
+- name: Set number of controlplane_master and controlplane_slave VMs
+  ansible.builtin.set_fact:
+    num_vms: "{{ groups['controlplane_master'] | length + groups['controlplane_slave'] | length }}"
+
+- name: Wait for all nodes to be ready
+  ansible.builtin.command: kubectl wait --for=condition=Ready nodes --all --timeout=300s
+  run_once: true

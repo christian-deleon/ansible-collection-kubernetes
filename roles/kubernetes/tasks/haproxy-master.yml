@@ -1,0 +1,53 @@
+---
+- name: Install keepalived
+  ansible.builtin.package:
+    name: keepalived
+    state: present
+
+- name: Copy check_apiserver.sh
+  ansible.builtin.template:
+    src: check_apiserver.sh.j2
+    dest: /etc/keepalived/check_apiserver.sh
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Configure keepalived
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Restart Keepalived
+
+- name: Install HAProxy
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+
+- name: Configure HAProxy
+  ansible.builtin.lineinfile:
+    insertafter: EOF
+    path: /etc/haproxy/haproxy.cfg
+    line: "{{ lookup('template', 'haproxy.cfg.j2') }}"
+
+- name: Enable HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    enabled: true
+
+- name: Start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+
+- name: Enable keepalived
+  ansible.builtin.service:
+    name: keepalived
+    enabled: true
+
+- name: Start keepalived
+  ansible.builtin.service:
+    name: keepalived
+    state: started

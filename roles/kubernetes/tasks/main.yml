@@ -1,0 +1,26 @@
+---
+- name: Configure HAProxy on Controlplane
+  include_tasks: haproxy.yml
+  when: kubernetes_role == 'controlplane_master' or kubernetes_role == 'controlplane_slave'
+
+- name: Common Configuration
+  include_tasks: common.yml
+
+- name: Containerd Bug Fix
+  include_tasks: containerd_bug.yml
+
+- name: Configure Controlplane
+  include_tasks: master.yml
+  when: kubernetes_role == 'controlplane_master' or kubernetes_role == 'controlplane_slave' 
+
+- name: Configure Local Kubectl Config
+  include_tasks: kubeconfig.yml
+  delegate_to: localhost
+
+- name: Configure CNI on Controlplane Master
+  include_tasks: cni.yml
+  when: kubernetes_role == 'controlplane_master'
+
+- name: Configure Nodes
+  include_tasks: node.yml
+  when: kubernetes_role == 'node'

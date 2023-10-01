@@ -1,0 +1,46 @@
+---
+- name: Install required system packages
+  become: true
+  ansible.builtin.apt:
+    pkg:
+      - apt-transport-https
+      - curl
+    state: present
+    update_cache: true
+
+- name: Add Docker GPG apt Key
+  become: true
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Installing containerd
+  become: true
+  ansible.builtin.apt:
+    pkg:
+      - containerd.io
+    state: present
+    update_cache: true
+
+- name: Create containerd config.toml
+  ansible.builtin.command: containerd config default > /etc/containerd/config.toml
+
+- name: Set config.toml SystemdCgroup = true
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^#?systemd_cgroup ='
+    line: 'systemd_cgroup = true'
+    state: present
+    backup: true
+
+- name: Restart containerd
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted

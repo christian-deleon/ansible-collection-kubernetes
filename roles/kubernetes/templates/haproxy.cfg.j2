@@ -1,0 +1,12 @@
+frontend kubernetes-frontend
+    bind {{ kube_apiserver_ip }}:6443
+    mode tcp
+    default_backend kubernetes-backend
+
+backend kubernetes-backend
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    {% for host in groups['controlplane_master'] | union(groups['controlplane_slave']) %}
+    server {{ hostvars[host]['ansible_hostname'] }} {{ hostvars[host]['ansible_host'] }}:6443 check
+    {% endfor %}

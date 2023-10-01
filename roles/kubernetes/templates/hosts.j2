@@ -1,0 +1,6 @@
+127.0.0.1   localhost
+{{ ansible_default_ipv4.address }} {{ ansible_hostname }}
+{% for host in groups['cluster'] %}
+{{ hostvars[host]['ansible_default_ipv4']['address'] }} {{ hostvars[host]['ansible_hostname'] }}
+{% endfor %}
+{{ kube_apiserver_ip }} vip-k8s-master

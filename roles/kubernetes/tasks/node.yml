@@ -1,0 +1,25 @@
+---
+- name: Saving the master hostname
+  ansible.builtin.set_fact:
+    master_host_ip: "{{ hostvars[groups['controlplane_master'][0]].guest.ipAddress }}"
+
+- name: Getting kubeadm join command
+  ansible.builtin.command: kubeadm token create --print-join-command
+  changed_when: false
+  register: join_command
+  delegate_to: "{{ master_host_ip }}"
+  run_once: true
+
+- name: Joining worker with cluster
+  ansible.builtin.command: "{{ join_command.stdout }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+
+- name: Set number of worker VMs
+  ansible.builtin.set_fact:
+    num_vms: "{{ groups['worker'] | length }}"
+
+- name: Wait for all nodes to be ready
+  ansible.builtin.command: kubectl wait --for=condition=Ready nodes --all --timeout=300s
+  delegate_to: "{{ master_host_ip }}"
+  run_once: true
