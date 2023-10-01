@@ -10,9 +10,9 @@
 - name: Installing K8s Packages
   ansible.builtin.yum:
     name:
-      - kubelet-1.25.5-0
-      - kubelet-1.25.5-0
-      - kubelet-1.25.5-0
+      - kubelet-{{ kubernetes_version }}-0
+      - kubelet-{{ kubernetes_version }}-0
+      - kubelet-{{ kubernetes_version }}-0
     state: installed
     disable_excludes: all
     exclude: kubernetes
