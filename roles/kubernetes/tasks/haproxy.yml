@@ -1,12 +1,12 @@
 ---
 - name: Install HAProxy and Keepalived
-  ansible.builtin.include_tasks: haproxy.yml
+  ansible.builtin.include_tasks: haproxy-master.yml
   vars:
     state: "MASTER"
   when: inventory_hostname in groups['controlplane_master']
 
 - name: Install HAProxy and Keepalived
-  ansible.builtin.include_tasks: haproxy.yml
+  ansible.builtin.include_tasks: haproxy-master.yml
   vars:
     state: "SLAVE"
   when: inventory_hostname in groups['controlplane_slave']
