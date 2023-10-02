@@ -1,0 +1,74 @@
+---
+- name: Download MetalLB manifests
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/metallb/metallb/v0.13.9/config/manifests/metallb-native.yaml
+    dest: /tmp/metallb-native.yaml
+    mode: 0644
+  run_once: true
+
+- name: Apply MetalLB manifests
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/metallb-native.yaml
+  run_once: true
+
+- name: Wait for MetalLB Pods to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: metallb-system
+  register: metallb_pods
+  until: metallb_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length >= 1
+  retries: 30
+  delay: 10
+  run_once: true
+
+- name: Enable strict ARP mode
+  ansible.builtin.shell: |
+    kubectl get configmap kube-proxy -n kube-system -o yaml | \
+      sed -e "s/strictARP: false/strictARP: true/" | \
+      kubectl apply -f - -n kube-system
+  run_once: true
+
+- name: Wait for kube-proxy Pods to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: kube-system
+  register: kube_proxy_pods
+  until: kube_proxy_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length >= 1
+  retries: 30
+  delay: 10
+  run_once: true
+
+- name: Copy MetalLB IPAddressPool
+  ansible.builtin.template:
+    src: ip-address-pool.yml.j2
+    dest: /tmp/ip-address-pool.yml
+    mode: 0644
+  run_once: true
+
+- name: Wait for 60 seconds
+  ansible.builtin.wait_for:
+    timeout: 60
+    state: started
+  run_once: true
+
+- name: Apply MetalLB IPAddressPool
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/ip-address-pool.yml
+  run_once: true
+
+- name: Copy MetalLB L2Advertisement
+  ansible.builtin.template:
+    src: l2-advertisement.yml.j2
+    dest: /tmp/l2-advertisement.yml
+    mode: 0644
+  run_once: true
+
+- name: Apply MetalLB L2Advertisement
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/l2-advertisement.yml
+  run_once: true
