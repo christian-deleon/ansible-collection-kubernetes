@@ -1,0 +1,3 @@
+---
+kubeconfig_dir: ~/.kube
+context_name: default
