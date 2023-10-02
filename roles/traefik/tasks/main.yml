@@ -1,0 +1,20 @@
+---
+- name: Add Traefik Helm repository
+  kubernetes.core.helm_repository:
+    name: traefik
+    repo_url: https://traefik.github.io/charts
+
+- name: Install Traefik
+  kubernetes.core.helm:
+    chart_ref: traefik/traefik
+    release_name: traefik
+    release_namespace: traefik
+    update_repo_cache: true
+    create_namespace: true
+    values:
+      providers:
+        kubernetesIngress:
+          enabled: true
+      dashboard:
+        enabled: true
+        ingressRoute: true
