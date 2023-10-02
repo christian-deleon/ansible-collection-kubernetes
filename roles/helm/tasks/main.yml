@@ -1,0 +1,61 @@
+---
+- name: "Create tmp directory"
+  ansible.builtin.file:
+    path: "{{ tmp_dir }}"
+    state: directory
+    mode: 0755
+
+- name: "Check if Helm is installed"
+  ansible.builtin.command: command -v helm >/dev/null 2>&1
+  register: helm_exists
+  ignore_errors: true
+
+- name: "Install Helm"
+  block:
+    - name: "Get Helm installer"
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: "{{ tmp_dir }}/get_helm.sh"
+        mode: 0700
+
+    - name: "Run the installer"
+      ansible.builtin.command: "{{ tmp_dir }}/get_helm.sh"
+      environment:
+          DESIRED_VERSION: "v{{ helm_version }}"
+
+  when: helm_exists.rc > 0
+
+- name: "Copy yaml file"
+  ansible.builtin.copy:
+    src: "rbac-config.yml"
+    dest: "{{ tmp_dir }}/rbac-config.yml"
+    mode: 0644
+
+- name: Install python3-pip
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+
+- name: Pip install kubernetes
+  ansible.builtin.pip:
+    name: kubernetes
+    state: present
+
+- name: Apply RBAC configuration
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ tmp_dir }}/rbac-config.yml"
+
+- name: Adding Helm stable repository
+  kubernetes.core.helm_repository:
+    name: stable
+    repo_url: https://charts.helm.sh/stable
+
+- name: "Update Helm repo"
+  ansible.builtin.command: "helm repo update"
+
+- name: "Clean-up"
+  ansible.builtin.file:
+    path: "{{ tmp_dir }}"
+    state: absent
+  ignore_errors: true
