@@ -1,0 +1,53 @@
+---
+- name: Create ArgoCD namespace
+  kubernetes.core.k8s:
+    name: argocd
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Download ArgoCD manifests
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    dest: /tmp/argo-install.yaml
+  when: not (argocd_core_install | default(false))
+
+- name: Apply ArgoCD manifests
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/argo-install.yaml
+    namespace: argocd
+  when: not (argocd_core_install | default(false))
+
+- name: Download ArgoCD core manifests
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/core-install.yaml
+    dest: /tmp/argo-core-install.yaml
+  when: argocd_core_install | default(false)
+
+- name: Apply ArgoCD core manifests
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/argo-core-install.yaml
+    namespace: argocd
+  when: argocd_core_install | default(false)
+
+- name: Update ConfigMap with new environment variable
+  kubernetes.core.k8s:
+    state: present
+    merge_type: 
+    - strategic-merge
+    - merge
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+        namespace: argocd
+      data:
+        server.insecure: "true"
+        server.disable.auth: "true"
+
+- name: Restart argocd-server
+  ansible.builtin.shell: |
+    kubectl -n argocd rollout restart deployment argocd-server
