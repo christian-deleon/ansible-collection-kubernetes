@@ -1,0 +1,75 @@
+---
+- name: Add Grafana Helm repository
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: https://grafana.github.io/helm-charts
+
+- name: Add Prometheus Helm repository
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    repo_url: https://prometheus-community.github.io/helm-charts
+
+- name: Install Loki Stack
+  kubernetes.core.helm:
+    chart_ref: grafana/loki-stack
+    release_name: loki-stack
+    release_namespace: monitoring
+    update_repo_cache: true
+    create_namespace: true
+    values:
+      loki:
+        enabled: true
+
+- name: Install Prometheus
+  kubernetes.core.helm:
+    chart_ref: prometheus-community/prometheus
+    release_name: prometheus
+    release_namespace: monitoring
+    update_repo_cache: true
+    create_namespace: true
+    values:
+      extraScrapeConfigs: |
+        - job_name: rabbitmq
+          static_configs:
+            - targets:
+              - rabbitmq-prom.rabbitmq.svc.cluster.local:15692
+        - job_name: marketdata-workers
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces:
+                names:
+                  - marketdata
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_app]
+              action: keep
+              regex: marketdata-workers
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+              action: replace
+              target_label: __address__
+              regex: (.+)(?::\d+)
+              replacement: $1:8000
+
+- name: Install Grafana
+  kubernetes.core.helm:
+    chart_ref: grafana/grafana
+    release_name: grafana
+    release_namespace: monitoring
+    update_repo_cache: true
+    create_namespace: true
+    values:
+      datasources:
+        datasources.yaml:
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              access: proxy
+              orgId: 1
+              url: http://prometheus-server.monitoring.svc.cluster.local
+              isDefault: true
+            - name: Loki
+              type: loki
+              access: proxy
+              orgId: 1
+              url: http://loki-stack.monitoring.svc.cluster.local:3100
+              isDefault: false
