@@ -1,0 +1,32 @@
+---
+- name: Create namespace
+  kubernetes.core.k8s:
+    name: nfs-provisioner
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Apply StorageClass
+  kubernetes.core.k8s:
+    state: present
+    template: storageclass.yml
+
+- name: Apply RBAC
+  kubernetes.core.k8s:
+    state: present
+    template: rbac.yml
+
+- name: Apply NFS k8s deployment
+  kubernetes.core.k8s:
+    state: present
+    template: deployment.yml.j2
+
+- name: Wait for NFS dynamic provisioner deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: nfs-provisioner
+  register: nfs_dynamic_provisioner
+  until: nfs_dynamic_provisioner.resources | selectattr('status.phase', 'equalto', 'Running') | list | length >= 1
+  retries: 10
+  delay: 10
