@@ -1,0 +1,14 @@
+---
+- name: Install NFS client packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nfs-common
+    - rpcbind
+
+- name: Enable and start rpcbind
+  ansible.builtin.service:
+    name: rpcbind
+    state: started
+    enabled: true

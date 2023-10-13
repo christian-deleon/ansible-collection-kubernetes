@@ -1,0 +1,35 @@
+---
+- name: Add Velero Helm Repo
+  kubernetes.core.helm_repository:
+    name: vmware-tanzu
+    repo_url: https://vmware-tanzu.github.io/helm-charts
+
+- name: Install Velero using Helm
+  kubernetes.core.helm:
+    name: velero
+    chart_ref: vmware-tanzu/velero
+    namespace: velero
+    create_namespace: true
+    context: "{{ context_name }}"
+    values:
+      credentials:
+        secretContents:
+          cloud: "{{ lookup('file', '~/.aws/credentials') }}"
+      configuration:
+        backupStorageLocation:
+          - name: default
+            provider: aws
+            bucket: "{{ velero_bucket }}"
+            config:
+              region: "{{ velero_region }}"
+        volumeSnapshotLocation:
+          - name: default
+            provider: aws
+            config:
+              region: "{{ velero_region }}"
+      initContainers:
+        - name: velero-plugin-for-aws
+          image: "velero/velero-plugin-for-aws:{{ velero_aws_version }}"
+          volumeMounts:
+            - mountPath: /target
+              name: plugins

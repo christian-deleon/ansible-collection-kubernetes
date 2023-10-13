@@ -2,7 +2,7 @@
 - name: Configure controlplane master
   block:
   - name: Resetting Kubernetes component
-    ansible.builtin.command: "kubeadm reset --force"
+    ansible.builtin.command: "kubeadm reset --force --cri-socket=unix:///var/run/cri-dockerd.sock"
     register: reset_cluster
     changed_when: false
 
@@ -12,9 +12,22 @@
         --kubernetes-version=v{{ kubernetes_version }} \
         --pod-network-cidr={{ pod_network_cidr }} \
         --control-plane-endpoint={{ kube_apiserver_ip }}:6443 \
-        --upload-certs
+        --upload-certs \
+        --cri-socket=unix:///var/run/cri-dockerd.sock
     when: reset_cluster is succeeded
     register: init_cluster
+
+  - name: Make sure kubelet root directory exists
+    ansible.builtin.file:
+      path: "{{ kubelet_root_dir }}"
+      state: directory
+      mode: '0755'
+
+  - name: Edit 10-kubeadm.conf
+    ansible.builtin.lineinfile:
+      path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+      regexp: '^ExecStart='
+      line: 'ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock'
 
   - name: Creating ~/.kube
     ansible.builtin.file:
@@ -57,6 +70,14 @@
       flat: true
       mode: 0600
     when: context_name is not defined
+
+  - name: Copy kubeadm-config.yaml
+    ansible.builtin.copy:
+      src: kubeadm-config.yaml
+      dest: /tmp/kubeadm-config.yaml
+      owner: root
+      group: root
+      mode: 0644
   when: inventory_hostname in groups['controlplane_master']
 
 - name: Configure controlplane slave
@@ -73,7 +94,7 @@
     run_once: true
 
   - name: Get certificate key
-    ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+    ansible.builtin.command: kubeadm init phase upload-certs --upload-certs --config=/tmp/kubeadm-config.yaml
     register: certificate_key_output
     delegate_to: "{{ controlplane_master_ip }}"
     when: true
@@ -88,6 +109,6 @@
       join_command: "{{ join_command.stdout }} --certificate-key {{ certificate_key }}"
 
   - name: Run join command
-    ansible.builtin.command: "{{ join_command }} --control-plane"
+    ansible.builtin.command: "{{ join_command }} --control-plane --cri-socket=unix:///var/run/cri-dockerd.sock"
     when: true
   when: inventory_hostname in groups['controlplane_slave']

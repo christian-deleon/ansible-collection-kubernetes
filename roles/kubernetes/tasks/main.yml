@@ -6,9 +6,6 @@
 - name: Common Configuration
   include_tasks: common.yml
 
-- name: Containerd Bug Fix
-  include_tasks: containerd-bug.yml
-
 - name: Configure Controlplane
   include_tasks: master.yml
   when: "'controlplane_master' in group_names or 'controlplane_slave' in group_names"

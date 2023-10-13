@@ -16,6 +16,7 @@
     release_namespace: monitoring
     update_repo_cache: true
     create_namespace: true
+    context: "{{ context_name }}"
     values:
       loki:
         enabled: true
@@ -27,6 +28,7 @@
     release_namespace: monitoring
     update_repo_cache: true
     create_namespace: true
+    context: "{{ context_name }}"
     values:
       extraScrapeConfigs: |
         - job_name: rabbitmq
@@ -56,6 +58,7 @@
     release_namespace: monitoring
     update_repo_cache: true
     create_namespace: true
+    context: "{{ context_name }}"
     values:
       datasources:
         datasources.yaml:

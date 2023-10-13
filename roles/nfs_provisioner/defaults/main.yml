@@ -1,0 +1,6 @@
+---
+nfs_provisioner_name: nfs-provisioner
+nfs_namespace: nfs
+nfs_storage_class_name: nfs
+nfs_reclaim_policy: Retain
+nfs_default_class: "true"

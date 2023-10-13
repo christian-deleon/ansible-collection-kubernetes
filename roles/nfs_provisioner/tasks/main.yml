@@ -1,32 +1,24 @@
 ---
-- name: Create namespace
-  kubernetes.core.k8s:
+- name: Add NFS provisioner Helm repository
+  kubernetes.core.helm_repository:
     name: nfs-provisioner
-    api_version: v1
-    kind: Namespace
-    state: present
+    repo_url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 
-- name: Apply StorageClass
-  kubernetes.core.k8s:
-    state: present
-    template: storageclass.yml
-
-- name: Apply RBAC
-  kubernetes.core.k8s:
-    state: present
-    template: rbac.yml
-
-- name: Apply NFS k8s deployment
-  kubernetes.core.k8s:
-    state: present
-    template: deployment.yml.j2
-
-- name: Wait for NFS dynamic provisioner deployment to be ready
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Pod
-    namespace: nfs-provisioner
-  register: nfs_dynamic_provisioner
-  until: nfs_dynamic_provisioner.resources | selectattr('status.phase', 'equalto', 'Running') | list | length >= 1
-  retries: 10
-  delay: 10
+- name: Install NFS provisioner
+  kubernetes.core.helm:
+    name: "{{ nfs_provisioner_name }}"
+    chart_ref: nfs-provisioner/nfs-subdir-external-provisioner
+    release_namespace: "{{ nfs_namespace }}"
+    release_name: nfs-provisioner
+    create_namespace: true
+    release_state: present
+    context: "{{ context_name }}"
+    values:
+      nfs:
+        server: "{{ nfs_server }}"
+        path: "{{ nfs_path }}"
+      storageClass:
+        name: "{{ nfs_storage_class_name }}"
+        provisionerName: k8s-sigs.io/second-nfs-subdir-external-provisioner
+        reclaimPolicy: "{{ nfs_reclaim_policy }}"
+        defaultClass: "{{ nfs_default_class }}"

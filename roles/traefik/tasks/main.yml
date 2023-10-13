@@ -11,6 +11,7 @@
     release_namespace: traefik
     update_repo_cache: true
     create_namespace: true
+    context: "{{ context_name }}"
     values:
       providers:
         kubernetesIngress:

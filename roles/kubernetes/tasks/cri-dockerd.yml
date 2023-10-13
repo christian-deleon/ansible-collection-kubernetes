@@ -1,0 +1,103 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+
+- name: Add Docker GPG apt Key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Install Docker
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Make sure containerd root directory exists
+  ansible.builtin.file:
+    path: "{{ containerd_root_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Set Containerd root directory
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^root = "/var/lib/containerd"'
+    line: 'root = "{{ containerd_root_dir }}"'
+
+- name: Restart containerd
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Git clone cri-dockerd
+  git:
+    repo: https://github.com/Mirantis/cri-dockerd.git
+    dest: /tmp/cri-dockerd
+
+- name: Download the latest release
+  get_url:
+    url: "https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.4/cri-dockerd-0.3.4.amd64.tgz"
+    dest: /tmp/cri-dockerd.tgz
+
+- name: Create /usr/local/bin
+  file:
+    path: /usr/local/bin
+    state: directory
+    mode: '0755'
+
+- name: Extract the archive
+  unarchive:
+    src: /tmp/cri-dockerd.tgz
+    dest: /tmp
+    remote_src: true
+
+- name: Copy cri-dockerd
+  shell: |
+    install -o root -g root -m 0755 /tmp/cri-dockerd/cri-dockerd /usr/local/bin/cri-dockerd
+
+- name: Copy systemd files
+  shell: |
+    install /tmp/cri-dockerd/packaging/systemd/* /etc/systemd/system
+
+- name: sed
+  shell: |
+    sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
+
+- name: Edit cri-docker.service
+  lineinfile:
+    path: /etc/systemd/system/cri-docker.service
+    regexp: '^ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd://'
+    line: 'ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd:// --network-plugin=cni'
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: true
+
+- name: Enable cri-dockerd
+  shell: |
+    systemctl enable --now cri-docker.socket

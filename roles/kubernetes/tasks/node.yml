@@ -11,7 +11,7 @@
   run_once: true
 
 - name: Joining worker with cluster
-  ansible.builtin.command: "{{ join_command.stdout }}"
+  ansible.builtin.command: "{{ join_command.stdout }} --cri-socket=unix:///var/run/cri-dockerd.sock"
   args:
     creates: /etc/kubernetes/kubelet.conf
 

@@ -1,2 +1,19 @@
 ---
+# Kubernetes
+kubernetes_version: "1.26.3"
+pod_network_cidr: "10.244.0.0/16"
 containerd_root_dir: /var/lib/containerd
+kubelet_root_dir: /var/lib/kubelet
+
+# Other
+keepalived_auth_password: "password"
+
+# CNI
+cni: flannel # calico or flannel
+calico_version: "3.25.1"
+
+# CRI-O
+cri_dockerd_version: "latest"
+cri_dockerd_arch: "amd64"
+cri_dockerd_binary_path: "/usr/local/bin"
+cri_dockerd_network_plugin: "cni"
