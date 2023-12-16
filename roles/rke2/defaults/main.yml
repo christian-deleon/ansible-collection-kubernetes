@@ -2,3 +2,4 @@
 rke2_taint_control_plane: true
 rke2_disable_firewalld: false
 rke2_open_firewall_ports: true
+rke2_copy_kubeconfig: true

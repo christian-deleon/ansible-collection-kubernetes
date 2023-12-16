@@ -28,6 +28,14 @@
       path: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
       regexp: '^ExecStart='
       line: 'ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock'
+  
+  - name: Retrieve kubectl config from remote host
+    ansible.builtin.fetch:
+      src: /etc/rancher/rke2/rke2.yaml
+      dest: "~/.kube/{{ context_name | default('config') }}"
+      flat: true
+      mode: '0600'
+    when: rke2_copy_kubeconfig
 
   when: inventory_hostname in groups['controlplane_master']
 

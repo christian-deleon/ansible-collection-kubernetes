@@ -35,9 +35,19 @@
     state: started
     enabled: true
 
-- name: Register RKE2 Token
-  ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
-  register: rke2_token
-  failed_when: false
-  changed_when: false
+- block:
+  - name: Register RKE2 Token
+    ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
+    register: rke2_token
+    failed_when: false
+    changed_when: false
+
+  - name: Retrieve kubectl config from remote host
+    ansible.builtin.fetch:
+      src: /etc/rancher/rke2/rke2.yaml
+      dest: "~/.kube/{{ context_name | default('config') }}"
+      flat: true
+      mode: '0600'
+    when: rke2_copy_kubeconfig
+
   when: "'controlplane_master' in group_names"

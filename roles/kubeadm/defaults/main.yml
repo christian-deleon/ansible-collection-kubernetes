@@ -4,6 +4,7 @@ kubernetes_version: "1.26.3"
 pod_network_cidr: "10.244.0.0/16"
 containerd_root_dir: /var/lib/containerd
 kubelet_root_dir: /var/lib/kubelet
+kubernetes_copy_kubeconfig: true
 
 # Other
 keepalived_auth_password: "password"
