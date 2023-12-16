@@ -1,5 +1,35 @@
 ---
-- name: Set kubeconfig context
-  kubeconfig_manager:
-    kubeconfig_path: "{{ kubeconfig_dir }}/{{ context_name }}-config"
-    context_name: "{{ context_name }}"
+- name: Replace 'default' with context name
+  ansible.builtin.replace:
+    path: "{{ kubeconfig_dir }}/{{ kubeconfig_name }}"
+    regexp: 'default'
+    replace: '{{ kubeconfig_name }}'
+
+- name: Update server endpoint
+  ansible.builtin.replace:
+    path: "{{ kubeconfig_dir }}/{{ kubeconfig_name }}"
+    regexp: 'server:.*'
+    replace: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:6443"
+
+- name: Get current KUBECONFIG environment variable
+  ansible.builtin.command: echo $KUBECONFIG
+  register: kubeconfig_check
+
+- name: Update KUBECONFIG environment variable
+  ansible.builtin.replace:
+    path: "{{ kubeconfig_env_file }}"
+    regexp: 'export KUBECONFIG=.*'
+    replace: 'export KUBECONFIG={{ kubeconfig_check.stdout }}:{{ kubeconfig_dir }}/{{ kubeconfig_name }}'
+  when: kubeconfig_check.stdout != ''
+
+- name: Set KUBECONFIG environment variable
+  ansible.builtin.lineinfile:
+    path: "{{ kubeconfig_env_file }}"
+    line: 'export KUBECONFIG={{ kubeconfig_dir }}/{{ kubeconfig_name }}'
+    create: true
+  when: kubeconfig_check.stdout == ''
+
+- name: Source environment file
+  ansible.builtin.shell: . {{ kubeconfig_env_file }}
+  args:
+    executable: /bin/bash

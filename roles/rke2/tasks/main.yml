@@ -1,10 +1,4 @@
 ---
-- name: Update Packages
-  ansible.builtin.package:
-    name: '*'
-    state: latest
-    update_cache: true
-
 - name: Check for Firewalld
   ansible.builtin.command: which firewalld
   register: firewalld_check
