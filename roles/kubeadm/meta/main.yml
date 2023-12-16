@@ -1,6 +1,6 @@
 galaxy_info:
   author: Christian De Leon
-  description: Install and configure a Kubernetes clusetr
+  description: Install and configure a Kubernetes clusetr using kubeadm
 
   # If the issue tracker for your role is not on github, uncomment the
   # next line and provide a value

@@ -1,0 +1,49 @@
+---
+- name: Update Packages
+  ansible.builtin.package:
+    name: '*'
+    state: latest
+    update_cache: true
+
+- name: Check for Firewalld
+  ansible.builtin.command: which firewalld
+  register: firewalld_check
+  failed_when: false
+  changed_when: false
+
+- name: Disable firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: rke2_disable_firewalld and firewalld_check.rc == 0
+
+- name: Create RKE2 directory
+  ansible.builtin.file:
+    path: /etc/rancher/rke2
+    state: directory
+    mode: '0755'
+
+- name: Touch RKE2 Config File
+  ansible.builtin.file:
+    path: /etc/rancher/rke2/config.yaml
+    state: touch
+    mode: '0644'
+
+- name: Set RKE2 Server URL
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:9345"
+  when: "'controlplane_master' not in group_names"
+
+- name: Configure Main RKE2 Server
+  include_tasks: server.yml
+  when: "'controlplane_master' in group_names"
+
+- name: Configure Additional RKE2 Servers
+  include_tasks: server.yml
+  when: "'controlplane_slave' in group_names"
+
+- name: Configure Agents
+  include_tasks: agent.yml
+  when: "'worker' in group_names"

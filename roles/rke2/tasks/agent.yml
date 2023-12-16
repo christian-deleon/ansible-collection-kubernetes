@@ -1,0 +1,30 @@
+---
+- name: Open Firewall Ports
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop:
+    - 10250/tcp
+    - 30000-32767/tcp
+  when: rke2_open_firewall_ports and not rke2_disable_firewalld
+
+- name: Add RKE2 Agent Token
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: "token: \"{{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}\""
+
+- name: Run RKE2 Agent Install Script
+  ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
+  args:
+    creates: /var/lib/rancher/rke2
+  environment:
+    INSTALL_RKE2_TYPE: agent
+  register: rke2_install
+
+- name: Start RKE2 Agent
+  ansible.builtin.systemd:
+    name: rke2-agent
+    state: started
+    enabled: true

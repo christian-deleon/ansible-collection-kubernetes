@@ -29,55 +29,6 @@
       regexp: '^ExecStart='
       line: 'ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --container-runtime-endpoint=unix:///var/run/cri-dockerd.sock'
 
-  - name: Creating ~/.kube
-    ansible.builtin.file:
-      path: "/root/.kube"
-      state: directory
-      owner: root
-      group: root
-      mode: 0755
-
-  - name: Copy kubectl config to root directory
-    ansible.builtin.copy:
-      src: /etc/kubernetes/admin.conf
-      remote_src: true
-      dest: /root/.kube/config
-      owner: root
-      group: root
-      mode: 0600
-
-  - name: Copy kubectl config to temporary directory
-    ansible.builtin.copy:
-      src: /root/.kube/config
-      dest: /tmp/kubectl-config
-      remote_src: true
-      owner: "{{ ansible_user }}"
-      group: "{{ ansible_user }}"
-      mode: 0600
-
-  - name: Retrieve kubectl config from remote host
-    ansible.builtin.fetch:
-      src: /tmp/kubectl-config
-      dest: "~/.kube/{{ context_name }}-config"
-      flat: true
-      mode: 0600
-    when: context_name is defined
-
-  - name: Retrieve kubectl config from remote host
-    ansible.builtin.fetch:
-      src: /tmp/kubectl-config
-      dest: "~/.kube/config"
-      flat: true
-      mode: 0600
-    when: context_name is not defined
-
-  - name: Copy kubeadm-config.yaml
-    ansible.builtin.copy:
-      src: kubeadm-config.yaml
-      dest: /tmp/kubeadm-config.yaml
-      owner: root
-      group: root
-      mode: 0644
   when: inventory_hostname in groups['controlplane_master']
 
 - name: Configure controlplane slave
@@ -111,4 +62,5 @@
   - name: Run join command
     ansible.builtin.command: "{{ join_command }} --control-plane --cri-socket=unix:///var/run/cri-dockerd.sock"
     when: true
+
   when: inventory_hostname in groups['controlplane_slave']
