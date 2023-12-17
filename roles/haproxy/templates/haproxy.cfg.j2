@@ -4,6 +4,6 @@ frontend kubernetes-frontend
 
 backend kubernetes-backend
     balance roundrobin
-    {% for server in controlplane %}
-    server {{ server.name }} {{ server.ip }}:6443 check
+    {% for server in groups['controlplane'] %}
+    server {{ hostvars[server]['ansible_hostname'] }} {{ hostvars[server]['ansible_host'] }}:6443 check
     {% endfor %}
