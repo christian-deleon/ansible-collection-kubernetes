@@ -9,7 +9,7 @@
   ansible.builtin.replace:
     path: "{{ kubeconfig_dir }}/{{ kubeconfig_name }}"
     regexp: 'server:.*'
-    replace: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:6443"
+    replace: "server: https://{{ kubernetes_api_server | default(hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address']) }}:6443"
 
 - name: Get current KUBECONFIG environment variable
   ansible.builtin.command: echo $KUBECONFIG

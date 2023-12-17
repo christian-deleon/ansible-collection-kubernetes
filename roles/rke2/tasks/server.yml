@@ -10,6 +10,18 @@
     - 6443/tcp
   when: rke2_open_firewall_ports and not rke2_disable_firewalld
 
+- name: Set API Server Address
+  ansible.builtin.set_fact:
+    kubernetes_api_server: "{{ kubernetes_api_server | default(hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address']) }}"
+
+- name: Add RKE2 Advertising Address
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: |
+      advertise-address: "{{ kubernetes_api_server }}"
+      tls-san:
+        - "{{ kubernetes_api_server }}"
+
 - name: Add RKE2 Server Token
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
