@@ -1,0 +1,27 @@
+---
+- name: Install HAProxy and Keepalived
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - haproxy
+    - keepalived
+
+- name: Configure HAProxy
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart HAProxy
+
+- name: Configure Keepalived
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Keepalived

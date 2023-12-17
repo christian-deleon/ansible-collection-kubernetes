@@ -1,0 +1,9 @@
+frontend kubernetes-frontend
+    bind *:6443
+    default_backend kubernetes-backend
+
+backend kubernetes-backend
+    balance roundrobin
+    {% for server in controlplane %}
+    server {{ server.name }} {{ server.ip }}:6443 check
+    {% endfor %}
