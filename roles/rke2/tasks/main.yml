@@ -27,7 +27,7 @@
 - name: Set RKE2 Server URL
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
-    line: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:9345"
+    line: "server: https://{{ kubernetes_api_server | default(hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address']) }}:9345"
   when: "'controlplane_master' not in group_names"
 
 - name: Configure Main RKE2 Server

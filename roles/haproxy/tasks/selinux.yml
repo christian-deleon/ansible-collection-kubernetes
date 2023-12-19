@@ -1,0 +1,28 @@
+---
+- name: Install policycoreutils-python-utils
+  ansible.builtin.dnf:
+    name: policycoreutils-python-utils
+    state: present
+
+- name: Generate SELinux policy module for HAProxy
+  ansible.builtin.shell:
+    cmd: |
+      grep haproxy /var/log/audit/audit.log | audit2allow -M haproxy_port
+      mv haproxy_port.pp /tmp/
+      mv haproxy_port.te /tmp/
+  args:
+    creates: /tmp/haproxy_port.pp
+
+- name: Install the HAProxy SELinux policy module
+  ansible.builtin.shell:
+    cmd: semodule -i /tmp/haproxy_port.pp
+  when: ansible_facts.selinux.status == "enabled"
+  notify: Restart HAProxy
+
+- name: Remove temporary SELinux policy files
+  ansible.builtin.file:
+    path: "/tmp/haproxy_port.{{ item }}"
+    state: absent
+  loop:
+    - "pp"
+    - "te"

@@ -1,5 +1,11 @@
+defaults
+    mode tcp
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
+
 frontend kubernetes-frontend
-    bind *:6443
+    bind *:8443
     default_backend kubernetes-backend
 
 backend kubernetes-backend

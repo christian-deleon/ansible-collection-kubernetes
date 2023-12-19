@@ -8,6 +8,13 @@
     - haproxy
     - keepalived
 
+- name: Open 6443/tcp on the firewall
+  ansible.posix.firewalld:
+    port: "6443/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+
 - name: Configure HAProxy
   ansible.builtin.template:
     src: haproxy.cfg.j2
@@ -15,7 +22,20 @@
     owner: root
     group: root
     mode: '0644'
-  notify: Restart HAProxy
+  register: haproxy_config
+
+- name: Restart HAProxy with SELinux Handling
+  block:
+    - name: Restart HAProxy
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+        enabled: true
+      when: haproxy_config.changed
+
+  rescue:
+    - name: Include SELinux tasks
+      ansible.builtin.include_tasks: selinux.yml
 
 - name: Configure Keepalived
   ansible.builtin.template:
