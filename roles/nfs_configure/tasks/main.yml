@@ -1,13 +1,26 @@
 ---
-- name: Install NFS client packages
+- name: Install rpcbind
+  become: true
   ansible.builtin.package:
-    name: "{{ item }}"
+    name: rpcbind
     state: present
-  loop:
-    - nfs-common
-    - rpcbind
+
+- name: Install NFS Dependencies
+  become: true
+  ansible.builtin.package:
+    name: nfs-common
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install NFS Dependencies
+  become: true
+  ansible.builtin.package:
+    name: nfs-utils
+    state: present
+  when: ansible_os_family == 'RedHat'
 
 - name: Enable and start rpcbind
+  become: true
   ansible.builtin.service:
     name: rpcbind
     state: started
