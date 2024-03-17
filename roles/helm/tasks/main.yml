@@ -11,6 +11,7 @@
   ignore_errors: true
 
 - name: "Install Helm"
+  when: helm_exists.rc > 0
   block:
     - name: "Get Helm installer"
       ansible.builtin.get_url:
@@ -22,8 +23,6 @@
       ansible.builtin.command: "{{ tmp_dir }}/get_helm.sh"
       environment:
           DESIRED_VERSION: "v{{ helm_version }}"
-
-  when: helm_exists.rc > 0
 
 - name: "Copy yaml file"
   ansible.builtin.copy:

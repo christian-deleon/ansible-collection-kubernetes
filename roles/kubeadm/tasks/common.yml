@@ -1,15 +1,15 @@
 ---
 - block:
-  - name: Ensure NTP package is installed
-    ansible.builtin.package:
-      name: ntp
-      state: present
+    - name: Ensure NTP package is installed
+      ansible.builtin.package:
+        name: ntp
+        state: present
 
-  - name: Ensure NTP service is started and enabled
-    service:
-      name: ntp
-      state: started
-      enabled: true
+    - name: Ensure NTP service is started and enabled
+      service:
+        name: ntp
+        state: started
+        enabled: true
 
 - name: Set Hosts
   ansible.builtin.template:
@@ -20,6 +20,7 @@
     mode: 0644
 
 - name: Configuring SELinux
+  when: ansible_distribution == 'CentOS'
   block:
     - name: Installing required packages
       ansible.builtin.package:
@@ -33,7 +34,6 @@
         policy: targeted
         state: permissive
       notify: Reboot Machine
-  when: ansible_distribution == 'CentOS'
 
 - name: Rebooting Now
   ansible.builtin.meta: flush_handlers
