@@ -1,17 +1,4 @@
 ---
-- name: Check for Firewalld
-  ansible.builtin.command: which firewalld
-  register: firewalld_check
-  failed_when: false
-  changed_when: false
-
-- name: Disable firewalld
-  ansible.builtin.service:
-    name: firewalld
-    state: stopped
-    enabled: false
-  when: rke2_disable_firewalld and firewalld_check.rc == 0
-
 - name: Create RKE2 directory
   ansible.builtin.file:
     path: /etc/rancher/rke2
@@ -23,6 +10,14 @@
     path: /etc/rancher/rke2/config.yaml
     state: touch
     mode: '0644'
+
+- name: Disble Nginx Ingress
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: |
+      disable:
+        - rke2-ingress-nginx
+  when: rke2_disable_ingress_nginx | bool
 
 - name: Set RKE2 Server URL
   ansible.builtin.lineinfile:

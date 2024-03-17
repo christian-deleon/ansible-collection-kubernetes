@@ -1,4 +1,9 @@
 ---
+- name: Check if firewalld is installed
+  ansible.builtin.stat:
+    path: /usr/bin/firewall-cmd
+  register: firewalld_installed
+
 - name: Open Firewall Ports
   ansible.posix.firewalld:
     port: "{{ item }}"
@@ -8,7 +13,7 @@
   loop:
     - 9345/tcp
     - 6443/tcp
-  when: rke2_open_firewall_ports and not rke2_disable_firewalld
+  when: firewalld_installed.stat.exists
 
 - name: Add RKE2 Server Token
   ansible.builtin.lineinfile:
@@ -35,19 +40,19 @@
     state: started
     enabled: true
 
-- block:
-  - name: Register RKE2 Token
-    ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
-    register: rke2_token
-    failed_when: false
-    changed_when: false
-
-  - name: Retrieve kubectl config from remote host
-    ansible.builtin.fetch:
-      src: /etc/rancher/rke2/rke2.yaml
-      dest: "~/.kube/{{ context_name | default('config') }}"
-      flat: true
-      mode: '0600'
-    when: rke2_copy_kubeconfig
-
+- name: Register RKE2 Token
   when: "'controlplane_master' in group_names"
+  block:
+    - name: Register RKE2 Token
+      ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
+      register: rke2_token
+      failed_when: false
+      changed_when: false
+
+    - name: Retrieve kubectl config from remote host
+      ansible.builtin.fetch:
+        src: /etc/rancher/rke2/rke2.yaml
+        dest: "~/.kube/{{ context_name | default('config') }}"
+        flat: true
+        mode: '0600'
+      when: rke2_copy_kubeconfig

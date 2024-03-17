@@ -1,4 +1,9 @@
 ---
+- name: Check if firewalld is installed
+  ansible.builtin.stat:
+    path: /usr/bin/firewall-cmd
+  register: firewalld_installed
+
 - name: Open Firewall Ports
   ansible.posix.firewalld:
     port: "{{ item }}"
@@ -8,7 +13,7 @@
   loop:
     - 10250/tcp
     - 30000-32767/tcp
-  when: rke2_open_firewall_ports and not rke2_disable_firewalld
+  when: firewalld_installed.stat.exists
 
 - name: Add RKE2 Agent Token
   ansible.builtin.lineinfile:
@@ -21,6 +26,7 @@
     creates: /var/lib/rancher/rke2
   environment:
     INSTALL_RKE2_TYPE: agent
+    INSTALL_RKE2_VERSION: "{{ INSTALL_RKE2_VERSION | default(omit) }}"
   register: rke2_install
 
 - name: Start RKE2 Agent
