@@ -31,6 +31,8 @@
 
 - name: Run RKE2 Server Install Script
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
+  environment:
+    INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
   args:
     creates: /var/lib/rancher/rke2
 
