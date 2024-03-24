@@ -30,13 +30,27 @@
     dest: /etc/rancher/rke2/config.yaml
     line: |
       mirrors:
+
+- name: Set docker.io Registry Mirror
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    insertafter: "mirrors:"
+    line: |
         docker.io:
           endpoint:
-            - "{{ rke2_registry_mirror }}"
+            - "{{ rke2_dockerio_mirror }}"
+  when: rke2_dockerio_mirror is defined
+  notify: Restart RKE2
+
+- name: Set index.docker.io Registry Mirror
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    insertafter: "mirrors:"
+    line: |
         index.docker.io:
           endpoint:
-            - "{{ rke2_registry_mirror }}"
-  when: rke2_registry_mirror is defined
+            - "{{ rke2_indexdockerio_mirror }}"
+  when: rke2_indexdockerio_mirror is defined
   notify: Restart RKE2
 
 - name: Configure Main RKE2 Server
