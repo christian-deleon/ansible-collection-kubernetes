@@ -3,13 +3,13 @@
   ansible.builtin.file:
     path: /etc/rancher/rke2
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Touch RKE2 Config File
   ansible.builtin.file:
     path: /etc/rancher/rke2/config.yaml
     state: touch
-    mode: '0644'
+    mode: "0644"
 
 - name: Disble Nginx Ingress
   ansible.builtin.lineinfile:
@@ -32,11 +32,12 @@
       mirrors:
         docker.io:
           endpoint:
-            - "{{ rke2_registry_mirrors }}"
-        ghcr.io:
+            - "{{ rke2_registry_mirror }}"
+        index.docker.io:
           endpoint:
-            - "{{ rke2_registry_mirrors }}"
-  when: rke2_registry_mirrors | length > 0
+            - "{{ rke2_registry_mirror }}"
+  when: rke2_registry_mirror is defined
+  notify: Restart RKE2
 
 - name: Configure Main RKE2 Server
   include_tasks: server.yml

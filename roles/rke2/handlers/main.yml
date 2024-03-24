@@ -1,0 +1,6 @@
+---
+- name: Restart RKE2
+  ansible.builtin.systemd:
+    name: "{{ 'rke2-agent' if 'worker' in group_names else 'rke2-server' }}"
+    state: restarted
+    enabled: true

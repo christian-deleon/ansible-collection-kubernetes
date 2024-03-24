@@ -2,4 +2,3 @@
 rke2_taint_control_plane: true
 rke2_copy_kubeconfig: true
 rke2_disable_ingress_nginx: false
-rke2_registry_mirrors: []
