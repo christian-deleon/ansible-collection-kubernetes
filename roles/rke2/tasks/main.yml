@@ -25,6 +25,19 @@
     line: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:9345"
   when: "'controlplane_master' not in group_names"
 
+- name: Set Container Registry Mirrors
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: |
+      mirrors:
+        docker.io:
+          endpoint:
+            - "{{ rke2_registry_mirrors }}"
+        ghcr.io:
+          endpoint:
+            - "{{ rke2_registry_mirrors }}"
+  when: rke2_registry_mirrors | length > 0
+
 - name: Configure Main RKE2 Server
   include_tasks: server.yml
   when: "'controlplane_master' in group_names"
