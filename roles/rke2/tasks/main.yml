@@ -53,6 +53,14 @@
   when: rke2_indexdockerio_mirror is defined
   notify: Restart RKE2
 
+- name: Set max-pods
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: |
+      kubelet-arg:
+        - "max-pods={{ rke2_max_pods }}"
+  when: rke2_max_pods is defined
+
 - name: Configure Main RKE2 Server
   include_tasks: server.yml
   when: "'controlplane_master' in group_names"
