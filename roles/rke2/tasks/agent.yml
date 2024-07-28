@@ -14,11 +14,12 @@
     - 10250/tcp
     - 30000-32767/tcp
   when: firewalld_installed.stat.exists
+  ignore_errors: true
 
 - name: Add RKE2 Agent Token
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
-    line: "token: \"{{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}\""
+    line: 'token: "{{ hostvars[groups[''controlplane_master''][0]][''rke2_token''][''stdout''] }}"'
 
 - name: Run RKE2 Agent Install Script
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
