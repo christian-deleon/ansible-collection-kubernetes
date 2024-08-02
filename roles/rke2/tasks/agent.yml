@@ -4,7 +4,6 @@
     name: firewalld
     state: started
   register: firewalld_running
-  failed_when: false
   changed_when: false
 
 - name: Open Firewall Ports
