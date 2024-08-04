@@ -36,9 +36,9 @@
     dest: /etc/rancher/rke2/config.yaml
     insertafter: "mirrors:"
     line: |
-        docker.io:
-          endpoint:
-            - "{{ rke2_dockerio_mirror }}"
+      docker.io:
+        endpoint:
+          - "{{ rke2_dockerio_mirror }}"
   when: rke2_dockerio_mirror is defined
   notify: Restart RKE2
 
@@ -47,9 +47,9 @@
     dest: /etc/rancher/rke2/config.yaml
     insertafter: "mirrors:"
     line: |
-        index.docker.io:
-          endpoint:
-            - "{{ rke2_indexdockerio_mirror }}"
+      index.docker.io:
+        endpoint:
+          - "{{ rke2_indexdockerio_mirror }}"
   when: rke2_indexdockerio_mirror is defined
   notify: Restart RKE2
 
@@ -61,14 +61,52 @@
         - "max-pods={{ rke2_max_pods }}"
   when: rke2_max_pods is defined
 
+- name: Check if firewalld is installed
+  ansible.builtin.command: systemctl status firewalld
+  register: firewalld_status
+  ignore_errors: true
+  changed_when: false
+
+- name: Open Firewall Ports
+  when: firewalld_status.rc == 0
+  block:
+    - name: Install python3-firewall
+      ansible.builtin.package:
+        name: python3-firewall
+        state: present
+
+    - name: Open Firewall Ports for all nodes
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - 10250/tcp
+        - 8472/udp
+        - 30000-32767/tcp
+
+    - name: Open Firewall Ports for controlplane nodes
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - 6443/tcp
+        - 9345/tcp
+        - 2379-2380/tcp
+        - 2381/tcp
+      when: "'controlplane' in group_names"
+
 - name: Configure Main RKE2 Server
-  include_tasks: server.yml
+  ansible.builtin.include_tasks: server.yml
   when: "'controlplane_master' in group_names"
 
 - name: Configure Additional RKE2 Servers
-  include_tasks: server.yml
+  ansible.builtin.include_tasks: server.yml
   when: "'controlplane_slave' in group_names"
 
 - name: Configure Agents
-  include_tasks: agent.yml
+  ansible.builtin.include_tasks: agent.yml
   when: "'worker' in group_names"

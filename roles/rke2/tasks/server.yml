@@ -1,22 +1,4 @@
 ---
-- name: Check if firewalld is running
-  ansible.builtin.systemd:
-    name: firewalld
-    state: started
-  register: firewalld_running
-  changed_when: false
-
-- name: Open Firewall Ports
-  ansible.posix.firewalld:
-    port: "{{ item }}"
-    permanent: true
-    state: enabled
-    immediate: true
-  loop:
-    - 9345/tcp
-    - 6443/tcp
-  when: firewalld_running.status == 'started'
-
 - name: Add RKE2 Server Token
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
@@ -31,7 +13,7 @@
         - "CriticalAddonsOnly=true:NoExecute"
   when: "rke2_taint_control_plane"
 
-- name: Run RKE2 Server Install Script
+- name: Run RKE2 Server Install Script # noqa: command-instead-of-module
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
   environment:
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"

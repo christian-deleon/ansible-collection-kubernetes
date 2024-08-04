@@ -1,22 +1,4 @@
 ---
-- name: Check if firewalld is running
-  ansible.builtin.systemd:
-    name: firewalld
-    state: started
-  register: firewalld_running
-  changed_when: false
-
-- name: Open Firewall Ports
-  ansible.posix.firewalld:
-    port: "{{ item }}"
-    permanent: true
-    state: enabled
-    immediate: true
-  loop:
-    - 10250/tcp
-    - 30000-32767/tcp
-  when: firewalld_running.status == 'started'
-
 - name: Add RKE2 Agent Token
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
