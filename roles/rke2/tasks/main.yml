@@ -11,19 +11,28 @@
     state: touch
     mode: "0644"
 
-- name: Disble Nginx Ingress
+- name: Disable IPv6 in RKE2
+  ansible.builtin.lineinfile:
+    dest: /etc/rancher/rke2/config.yaml
+    line: "disable-ipv6: true"
+  when: rke2_disable_ipv6 | bool
+  notify: Restart RKE2
+
+- name: Disable Nginx Ingress
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
     line: |
       disable:
         - rke2-ingress-nginx
   when: rke2_disable_ingress_nginx | bool
+  notify: Restart RKE2
 
 - name: Set RKE2 Server URL
   ansible.builtin.lineinfile:
     dest: /etc/rancher/rke2/config.yaml
     line: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:9345"
   when: "'controlplane_master' not in group_names"
+  notify: Restart RKE2
 
 - name: Set Container Registry Mirrors
   ansible.builtin.lineinfile:
@@ -36,9 +45,9 @@
     dest: /etc/rancher/rke2/config.yaml
     insertafter: "mirrors:"
     line: |
-      docker.io:
-        endpoint:
-          - "{{ rke2_dockerio_mirror }}"
+        docker.io:
+          endpoint:
+            - "{{ rke2_dockerio_mirror }}"
   when: rke2_dockerio_mirror is defined
   notify: Restart RKE2
 
@@ -60,6 +69,12 @@
       kubelet-arg:
         - "max-pods={{ rke2_max_pods }}"
   when: rke2_max_pods is defined
+  notify: Restart RKE2
+
+- name: Install nftables
+  ansible.builtin.package:
+    name: nftables
+    state: present
 
 - name: Check if firewalld is installed
   ansible.builtin.command: systemctl status firewalld
