@@ -1,0 +1,29 @@
+{% if 'controlplane_master' not in group_names %}
+server: https://{{ rke2_server }}:9345
+token: {{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}
+{% endif %}
+cluster-cidr: {{ rke2_cluster_cidr }}
+service-cidr: {{ rke2_service_cidr }}
+{% if rke2_disable_cloud_manager | bool %}
+disable-cloud-controller: true
+{% endif %}
+{% if 'controlplane' in group_names %}
+advertise-address: {{ inventory_hostname }}
+tls-san:
+  - {{ inventory_hostname }}
+{% if rke2_ha_server | bool and rke2_server is defined %}
+  - {{ rke2_server }}
+{% endif %}
+{% if rke2_disable_ingress_nginx | bool %}
+disable:
+  - rke2-ingress-nginx
+{% endif %}
+{% if rke2_taint_control_plane | bool %}
+node-taint:
+  - "CriticalAddonsOnly=true:NoExecute"
+{% endif %}
+{% endif %}
+{% if rke2_max_pods is defined %}
+kubelet-arg:
+  - "max-pods={{ rke2_max_pods }}"
+{% endif %}

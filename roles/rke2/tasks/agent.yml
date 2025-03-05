@@ -16,22 +16,34 @@
   when: firewalld_installed.stat.exists
   ignore_errors: true
 
-- name: Add RKE2 Agent Token
-  ansible.builtin.lineinfile:
+- name: Create RKE2 config file
+  ansible.builtin.template:
+    src: templates/config.yaml.j2
     dest: /etc/rancher/rke2/config.yaml
-    line: 'token: "{{ hostvars[groups[''controlplane_master''][0]][''rke2_token''][''stdout''] }}"'
+    owner: root
+    group: root
+    mode: "0644"
+  register: rke2_config_result
+  notify: Restart RKE2 Agent
 
 - name: Run RKE2 Agent Install Script
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
-  args:
-    creates: /var/lib/rancher/rke2
   environment:
     INSTALL_RKE2_TYPE: agent
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
-  register: rke2_install
+  args:
+    creates: /var/lib/rancher/rke2
 
-- name: Start RKE2 Agent
+- name: Check if RKE2 Agent is running
+  ansible.builtin.command: "systemctl is-active rke2-agent"
+  register: rke2_agent_status
+  failed_when: false
+  changed_when: false
+
+- name: Start RKE2 Agent if not running
   ansible.builtin.systemd:
     name: rke2-agent
     state: started
     enabled: true
+  when: rke2_agent_status.rc != 0
+  timeout: 300

@@ -16,46 +16,52 @@
   when: firewalld_installed.stat.exists
   ignore_errors: true
 
-- name: Add RKE2 Server Token
-  ansible.builtin.lineinfile:
+- name: Create RKE2 config file
+  ansible.builtin.template:
+    src: templates/config.yaml.j2
     dest: /etc/rancher/rke2/config.yaml
-    line: 'token: "{{ hostvars[groups[''controlplane_master''][0]][''rke2_token''][''stdout''] }}"'
-  when: "'controlplane_slave' in group_names"
-
-- name: Taint Controlplane
-  ansible.builtin.lineinfile:
-    path: /etc/rancher/rke2/config.yaml
-    line: |
-      node-taint:
-        - "CriticalAddonsOnly=true:NoExecute"
-  when: "rke2_taint_control_plane"
+    owner: root
+    group: root
+    mode: "0644"
+  register: rke2_config_result
+  notify: Restart RKE2 Server
 
 - name: Run RKE2 Server Install Script # noqa: command-instead-of-module
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
   environment:
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
+    INSTALL_RKE2_TYPE: server
   args:
     creates: /var/lib/rancher/rke2
 
-- name: Start RKE2 Server
+- name: Check if RKE2 Server is running
+  ansible.builtin.command: "systemctl is-active rke2-server"
+  register: rke2_server_status
+  failed_when: false
+  changed_when: false
+
+- name: Start RKE2 Server if not running
   ansible.builtin.systemd:
     name: rke2-server
     state: started
     enabled: true
+  when: rke2_server_status.rc != 0
+  register: rke2_server_start
+  until: rke2_server_start is succeeded
+  retries: 2
+  delay: 5
 
 - name: Register RKE2 Token
+  ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
+  register: rke2_token
+  failed_when: false
+  changed_when: false
   when: "'controlplane_master' in group_names"
-  block:
-    - name: Register RKE2 Token
-      ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
-      register: rke2_token
-      failed_when: false
-      changed_when: false
 
-    - name: Retrieve kubectl config from remote host
-      ansible.builtin.fetch:
-        src: /etc/rancher/rke2/rke2.yaml
-        dest: "~/.kube/{{ context_name | default('config') }}"
-        flat: true
-        mode: "0600"
-      when: rke2_copy_kubeconfig
+- name: Retrieve kubectl config from remote host
+  ansible.builtin.fetch:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: "~/.kube/{{ context_name | default('config') }}"
+    flat: true
+    mode: "0600"
+  when: "'controlplane_master' in group_names"

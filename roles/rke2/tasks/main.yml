@@ -5,85 +5,37 @@
     state: directory
     mode: "0755"
 
-- name: Touch RKE2 Config File
-  ansible.builtin.file:
-    path: /etc/rancher/rke2/config.yaml
-    state: touch
-    mode: "0644"
-
-- name: Disable IPv6 in RKE2
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    line: "disable-ipv6: true"
-  when: rke2_disable_ipv6 | bool
-  notify: Restart RKE2
-
-- name: Disable Nginx Ingress
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    line: |
-      disable:
-        - rke2-ingress-nginx
-  when: rke2_disable_ingress_nginx | bool
-  notify: Restart RKE2
-
-- name: Set RKE2 Server URL
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    line: "server: https://{{ hostvars[groups['controlplane_master'][0]]['ansible_default_ipv4']['address'] }}:9345"
-  when: "'controlplane_master' not in group_names"
-  notify: Restart RKE2
-
-- name: Set Container Registry Mirrors
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    line: |
-      mirrors:
-
-- name: Set docker.io Registry Mirror
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    insertafter: "mirrors:"
-    line: |
-        docker.io:
-          endpoint:
-            - "{{ rke2_dockerio_mirror }}"
-  when: rke2_dockerio_mirror is defined
-  notify: Restart RKE2
-
-- name: Set index.docker.io Registry Mirror
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    insertafter: "mirrors:"
-    line: |
-      index.docker.io:
-        endpoint:
-          - "{{ rke2_indexdockerio_mirror }}"
-  when: rke2_indexdockerio_mirror is defined
-  notify: Restart RKE2
-
-- name: Set max-pods
-  ansible.builtin.lineinfile:
-    dest: /etc/rancher/rke2/config.yaml
-    line: |
-      kubelet-arg:
-        - "max-pods={{ rke2_max_pods }}"
-  when: rke2_max_pods is defined
-  notify: Restart RKE2
+- name: Gather service facts
+  ansible.builtin.service_facts:
 
 - name: Install nftables
   ansible.builtin.package:
     name: nftables
     state: present
 
-- name: Check if firewalld is installed
-  ansible.builtin.command: systemctl status firewalld
-  register: firewalld_status
-  ignore_errors: true
-  changed_when: false
+- name: Disable IPv6 on all interfaces
+  ansible.builtin.sysctl:
+    name: "{{ item }}"
+    value: 1
+    state: present
+    sysctl_set: true
+    reload: true
+  loop:
+    - net.ipv6.conf.all.disable_ipv6
+    - net.ipv6.conf.default.disable_ipv6
+    - net.ipv6.conf.lo.disable_ipv6
+  when: rke2_disable_ipv6 | bool
+
+- name: Ensure IPv6 kernel module is disabled
+  ansible.builtin.lineinfile:
+    path: /etc/modprobe.d/disable-ipv6.conf
+    line: "install ipv6 /bin/true"
+    create: true
+    mode: "0644"
+  when: rke2_disable_ipv6 | bool
 
 - name: Open Firewall Ports
-  when: firewalld_status.rc == 0
+  when: "'firewalld.service' in ansible_facts.services and ansible_facts.services['firewalld.service'].state is defined"
   block:
     - name: Install python3-firewall
       ansible.builtin.package:
