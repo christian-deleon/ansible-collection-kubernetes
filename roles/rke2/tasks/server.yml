@@ -57,11 +57,3 @@
   failed_when: false
   changed_when: false
   when: "'controlplane_master' in group_names"
-
-- name: Retrieve kubectl config from remote host
-  ansible.builtin.fetch:
-    src: /etc/rancher/rke2/rke2.yaml
-    dest: "~/.kube/{{ context_name | default('config') }}"
-    flat: true
-    mode: "0600"
-  when: "'controlplane_master' in group_names"
