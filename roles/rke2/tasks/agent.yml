@@ -24,7 +24,6 @@
     group: root
     mode: "0644"
   register: rke2_config_result
-  notify: Restart RKE2 Agent
 
 - name: Run RKE2 Agent Install Script
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
@@ -47,3 +46,11 @@
     enabled: true
   when: rke2_agent_status.rc != 0
   timeout: 300
+
+- name: Restart RKE2 Agent if config changed and was running
+  ansible.builtin.systemd:
+    name: rke2-agent
+    state: restarted
+  when:
+    - rke2_config_result is changed
+    - rke2_agent_status.rc == 0

@@ -24,7 +24,6 @@
     group: root
     mode: "0644"
   register: rke2_config_result
-  notify: Restart RKE2 Server
 
 - name: Run RKE2 Server Install Script # noqa: command-instead-of-module
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
@@ -50,6 +49,14 @@
   until: rke2_server_start is succeeded
   retries: 2
   delay: 5
+
+- name: Restart RKE2 Server if config changed
+  ansible.builtin.systemd:
+    name: rke2-server
+    state: restarted
+  when:
+    - rke2_config_result is changed
+    - rke2_server_status.rc == 0
 
 - name: Register RKE2 Token
   ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
