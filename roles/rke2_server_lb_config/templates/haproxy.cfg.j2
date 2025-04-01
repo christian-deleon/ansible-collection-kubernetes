@@ -12,27 +12,43 @@ defaults
     timeout connect 5000
     timeout client  50000
     timeout server  50000
+    retries 3
+    option redispatch
+    option persist
 
 frontend k8s-api
     bind {{ rke2_server }}:6443
     mode tcp
     default_backend k8s-api-backend
+    option tcplog
+    tcp-request inspect-delay 5s
+    tcp-request content accept if { req_len gt 0 }
 
 frontend supervisor
     bind {{ rke2_server }}:9345
     mode tcp
     default_backend supervisor-backend
+    option tcplog
 
 backend k8s-api-backend
     mode tcp
     balance roundrobin
+    option tcp-check
+    tcp-check connect
+    tcp-check send-binary 00
+    tcp-check expect binary 00
+    option ssl-hello-chk
 {% for host in groups['controlplane'] %}
-    server node{{ loop.index0 }} {{ host }}:6443 check
+    server node{{ loop.index0 }} {{ host }}:6443 check inter 2000 rise 2 fall 3
 {% endfor %}
 
 backend supervisor-backend
     mode tcp
     balance roundrobin
+    option tcp-check
+    tcp-check connect
+    tcp-check send-binary 00
+    tcp-check expect binary 00
 {% for host in groups['controlplane'] %}
-    server node{{ loop.index0 }} {{ host }}:9345 check
+    server node{{ loop.index0 }} {{ host }}:9345 check inter 2000 rise 2 fall 3
 {% endfor %}
