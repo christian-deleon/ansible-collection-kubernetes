@@ -3,6 +3,7 @@
 rke2_taint_control_plane: true
 rke2_copy_kubeconfig: true
 rke2_ha_server: false
+rke2_enable_selinux: true
 
 # Network Configuration
 rke2_disable_ipv6: true

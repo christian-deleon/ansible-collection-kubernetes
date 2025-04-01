@@ -45,7 +45,7 @@
     state: started
     enabled: true
   when: rke2_agent_status.rc != 0
-  timeout: 300
+  timeout: 600
 
 - name: Restart RKE2 Agent if config changed and was running
   ansible.builtin.systemd:

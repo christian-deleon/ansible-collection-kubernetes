@@ -4,9 +4,12 @@ token: {{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}
 {% endif %}
 cluster-cidr: {{ rke2_cluster_cidr }}
 service-cidr: {{ rke2_service_cidr }}
+node-ip: {{ ansible_default_ipv4.address }}
+node-name: {{ inventory_hostname }}
 {% if rke2_disable_cloud_manager | bool %}
 disable-cloud-controller: true
 {% endif %}
+selinux: {{ rke2_enable_selinux | bool }}
 {% if 'controlplane' in group_names %}
 advertise-address: {{ inventory_hostname }}
 tls-san:

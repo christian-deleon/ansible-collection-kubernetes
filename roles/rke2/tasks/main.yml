@@ -13,6 +13,12 @@
     name: nftables
     state: present
 
+- name: Install rke2-selinux if selinux is enabled
+  ansible.builtin.package:
+    name: rke2-selinux
+    state: present
+  when: ansible_facts.selinux.status == 'enabled'
+
 - name: Disable IPv6 on all interfaces
   ansible.builtin.sysctl:
     name: "{{ item }}"
@@ -52,6 +58,7 @@
         - 10250/tcp
         - 8472/udp
         - 30000-32767/tcp
+      ignore_errors: true
 
     - name: Open Firewall Ports for controlplane nodes
       ansible.posix.firewalld:
@@ -65,6 +72,7 @@
         - 2379-2380/tcp
         - 2381/tcp
       when: "'controlplane' in group_names"
+      ignore_errors: true
 
 - name: Configure Main RKE2 Server
   ansible.builtin.include_tasks: server.yml
