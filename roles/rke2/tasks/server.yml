@@ -1,6 +1,6 @@
 ---
-- name: Gather facts
-  service_facts:
+- name: Gather service facts
+  ansible.builtin.service_facts:
 
 - name: Open Firewall Ports
   when: >
