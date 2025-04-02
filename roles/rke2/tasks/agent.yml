@@ -1,21 +1,4 @@
 ---
-- name: Check if firewalld is installed
-  ansible.builtin.stat:
-    path: /usr/bin/firewall-cmd
-  register: firewalld_installed
-
-- name: Open Firewall Ports
-  ansible.posix.firewalld:
-    port: "{{ item }}"
-    permanent: true
-    state: enabled
-    immediate: true
-  loop:
-    - 10250/tcp
-    - 30000-32767/tcp
-  when: firewalld_installed.stat.exists
-  ignore_errors: true
-
 - name: Create RKE2 config file
   ansible.builtin.template:
     src: templates/config.yaml.j2
@@ -34,23 +17,23 @@
     creates: /var/lib/rancher/rke2
 
 - name: Check if RKE2 Agent is running
-  ansible.builtin.command: "systemctl is-active rke2-agent"
+  ansible.builtin.systemd:
+    name: rke2-agent
+    state: started
   register: rke2_agent_status
-  failed_when: false
-  changed_when: false
 
-- name: Start RKE2 Agent if not running
+- name: Start RKE2 Agent
   ansible.builtin.systemd:
     name: rke2-agent
     state: started
     enabled: true
-  when: rke2_agent_status.rc != 0
-  timeout: 600
+  when: rke2_agent_status.status.ActiveState != "active"
+  timeout: 900
 
-- name: Restart RKE2 Agent if config changed and was running
+- name: Restart RKE2 Agent
   ansible.builtin.systemd:
     name: rke2-agent
     state: restarted
   when:
     - rke2_config_result is changed
-    - rke2_agent_status.rc == 0
+    - rke2_agent_status.status.ActiveState == "active"

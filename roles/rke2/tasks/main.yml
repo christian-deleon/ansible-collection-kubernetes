@@ -13,12 +13,6 @@
     name: nftables
     state: present
 
-- name: Install rke2-selinux if selinux is enabled
-  ansible.builtin.package:
-    name: rke2-selinux
-    state: present
-  when: ansible_facts.selinux.status == 'enabled'
-
 - name: Disable IPv6 on all interfaces
   ansible.builtin.sysctl:
     name: "{{ item }}"
@@ -40,8 +34,14 @@
     mode: "0644"
   when: rke2_disable_ipv6 | bool
 
+- name: Gather facts
+  service_facts:
+
 - name: Open Firewall Ports
-  when: "'firewalld.service' in ansible_facts.services and ansible_facts.services['firewalld.service'].state is defined"
+  when: >
+    'firewalld.service' in ansible_facts.services and
+    ansible_facts.services['firewalld.service'].state is defined and
+    ansible_facts.services['firewalld.service'].state == 'running'
   block:
     - name: Install python3-firewall
       ansible.builtin.package:
