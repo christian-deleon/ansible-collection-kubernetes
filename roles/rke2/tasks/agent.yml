@@ -9,26 +9,25 @@
   register: rke2_config_result
 
 - name: Run RKE2 Agent Install Script
-  ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
+  ansible.builtin.shell: curl -sfL https://get.rke2.io | sh - 2>&1 | tee /var/log/rke2-install.log
   environment:
     INSTALL_RKE2_TYPE: agent
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
   args:
     creates: /var/lib/rancher/rke2
 
-- name: Check if RKE2 Agent is running
-  ansible.builtin.systemd:
-    name: rke2-agent
-    state: started
-  register: rke2_agent_status
+- name: Gather Service Facts
+  ansible.builtin.service_facts:
 
 - name: Start RKE2 Agent
   ansible.builtin.systemd:
     name: rke2-agent
     state: started
     enabled: true
-  when: rke2_agent_status.status.ActiveState != "active"
-  timeout: 900
+  register: rke2_agent_start
+  until: rke2_agent_start.status.ActiveState == 'active'
+  retries: 2
+  delay: 5
 
 - name: Restart RKE2 Agent
   ansible.builtin.systemd:
@@ -36,4 +35,4 @@
     state: restarted
   when:
     - rke2_config_result is changed
-    - rke2_agent_status.status.ActiveState == "active"
+    - ansible_facts.services['rke2-agent.service'].state == 'running'

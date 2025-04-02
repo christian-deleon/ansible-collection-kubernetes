@@ -46,9 +46,6 @@ backend supervisor-backend
     mode tcp
     balance roundrobin
     option tcp-check
-    tcp-check connect
-    tcp-check send-binary 00
-    tcp-check expect binary 00
 {% for host in groups['controlplane'] %}
     server node{{ loop.index0 }} {{ host }}:9345 check inter 2000 rise 2 fall 3
 {% endfor %}

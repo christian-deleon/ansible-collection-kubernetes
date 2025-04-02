@@ -29,13 +29,13 @@
   changed_when: false
 
 - name: Check HAProxy service status
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: haproxy
   register: haproxy_status
   changed_when: false
 
 - name: Start HAProxy
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: haproxy
     state: started
     enabled: true
@@ -51,7 +51,7 @@
   notify: Restart keepalived
 
 - name: Start keepalived
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: keepalived
     enabled: true
     state: started

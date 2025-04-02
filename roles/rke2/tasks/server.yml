@@ -33,27 +33,23 @@
   register: rke2_config_result
 
 - name: Run RKE2 Server Install Script # noqa: command-instead-of-module
-  ansible.builtin.shell: curl -sfL https://get.rke2.io | sh -
+  ansible.builtin.shell: curl -sfL https://get.rke2.io | sh - 2>&1 | tee /var/log/rke2-install.log
   environment:
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
     INSTALL_RKE2_TYPE: server
   args:
     creates: /var/lib/rancher/rke2
 
-- name: Check if RKE2 Server is running
-  ansible.builtin.systemd:
-    name: rke2-server
-    state: started
-  register: rke2_server_status
+- name: Gather Service Facts
+  ansible.builtin.service_facts:
 
 - name: Start RKE2 Server
   ansible.builtin.systemd:
     name: rke2-server
     state: started
     enabled: true
-  when: rke2_server_status.status.ActiveState != "active"
   register: rke2_server_start
-  until: rke2_server_start is succeeded
+  until: rke2_server_start.status.ActiveState == 'active'
   retries: 2
   delay: 5
 
@@ -63,7 +59,7 @@
     state: restarted
   when:
     - rke2_config_result is changed
-    - rke2_server_status.status.ActiveState == "active"
+    - ansible_facts.services['rke2-server.service'].state == 'running'
 
 - name: Register RKE2 Token
   ansible.builtin.command: cat /var/lib/rancher/rke2/server/node-token
