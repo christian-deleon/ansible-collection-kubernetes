@@ -1,7 +1,7 @@
 {% if 'controlplane_master' not in group_names %}
 server: https://{{ rke2_server }}:9345
 token: {{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}
-{% endif %}
+{% endif %} # end of controlplane_master
 node-ip: {{ ansible_default_ipv4.address }}
 node-name: {{ rke2_node_name }}
 selinux: {{ rke2_enable_selinux | lower }}
@@ -10,23 +10,23 @@ cluster-cidr: {{ rke2_cluster_cidr }}
 service-cidr: {{ rke2_service_cidr }}
 {% if rke2_disable_cloud_manager | bool %}
 disable-cloud-controller: {{ rke2_disable_cloud_manager | lower }}
-{% endif %}
+{% endif %} # end of disable_cloud_manager
 advertise-address: {{ inventory_hostname }}
 tls-san:
   - {{ inventory_hostname }}
 {% if rke2_ha_server | bool and rke2_server is defined %}
   - {{ rke2_server }}
-{% endif %}
+{% endif %} # end of ha_server
 {% if rke2_disable_ingress_nginx | bool %}
 disable:
   - rke2-ingress-nginx
-{% endif %}
+{% endif %} # end of disable_ingress_nginx
 {% if rke2_taint_control_plane | bool %}
 node-taint:
   - "CriticalAddonsOnly=true:NoExecute"
-{% endif %}
-{% endif %}
+{% endif %} # end of taint_control_plane
+{% endif %} # end of controlplane
 {% if rke2_max_pods is defined %}
 kubelet-arg:
   - "max-pods={{ rke2_max_pods }}"
-{% endif %}
+{% endif %} # end of max_pods
