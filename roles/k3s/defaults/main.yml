@@ -1,0 +1,4 @@
+---
+# General Configuration
+k3s_copy_kubeconfig: true
+k3s_enable_selinux: true
