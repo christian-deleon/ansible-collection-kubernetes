@@ -21,20 +21,10 @@
 - name: Gather Service Facts
   ansible.builtin.service_facts:
 
-- name: Start K3s Server
-  ansible.builtin.systemd:
-    name: k3s-server
-    state: started
-    enabled: true
-  register: k3s_server_start
-  until: k3s_server_start.status.ActiveState == 'active'
-  retries: 2
-  delay: 5
-
 - name: Restart K3s Server
   ansible.builtin.systemd:
-    name: k3s-server
+    name: k3s
     state: restarted
   when:
     - k3s_config_result is changed
-    - ansible_facts.services['k3s-server.service'].state == 'running'
+    - ansible_facts.services['k3s.service'].state == 'running'
