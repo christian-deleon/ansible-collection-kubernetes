@@ -1,2 +1,3 @@
 ---
 k3s_disable_ipv6: true
+k3s_enable_selinux: true

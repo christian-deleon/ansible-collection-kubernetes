@@ -1,9 +1,12 @@
 advertise-address: {{ hostvars[groups['controlplane_master'][0]]['public_ip_address'] }}
+selinux: {{ k3s_enable_selinux | lower }}
 {% if data_dir is defined %}
 data-dir: {{ data_dir }}
 {% endif %}
 tls-san:
-  - {{ inventory_hostname }}
+{% for host in groups['controlplane'] %}
+  - {{ hostvars[host]['public_ip_address'] }}
+{% endfor %}
 {% if k3s_disable_list is defined %}
 disable:
 {% for item in k3s_disable_list %}

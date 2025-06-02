@@ -1,7 +1,4 @@
 ---
-- name: Gather service facts
-  ansible.builtin.service_facts:
-
 - name: Create K3s config file
   ansible.builtin.template:
     src: templates/config.yaml.j2
@@ -11,6 +8,13 @@
     mode: "0644"
   register: k3s_config_result
 
+- name: Gather Service Facts
+  ansible.builtin.service_facts:
+
+- name: Set initial install flag
+  ansible.builtin.set_fact:
+    k3s_initial_install: "{{ 'k3s.service' not in ansible_facts.services }}"
+
 - name: Run K3s Server Install Script # noqa: command-instead-of-module
   ansible.builtin.shell: curl -sfL https://get.k3s.io | sh - 2>&1 | tee /var/log/k3s-install.log
   environment:
@@ -18,13 +22,12 @@
   args:
     creates: /var/lib/rancher/k3s
 
-- name: Gather Service Facts
-  ansible.builtin.service_facts:
-
 - name: Restart K3s Server
   ansible.builtin.systemd:
     name: k3s
     state: restarted
   when:
     - k3s_config_result is changed
+    - ansible_facts.services['k3s.service'] is defined
     - ansible_facts.services['k3s.service'].state == 'running'
+    - not k3s_initial_install | bool
