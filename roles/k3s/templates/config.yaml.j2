@@ -1,3 +1,6 @@
+advertise-address: {{ hostvars[groups['controlplane_master'][0]]['public_ip_address'] }}
 {% if data_dir is defined %}
 data-dir: {{ data_dir }}
 {% endif %}
+tls-san:
+  - {{ inventory_hostname }}
