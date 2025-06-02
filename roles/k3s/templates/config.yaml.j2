@@ -4,3 +4,9 @@ data-dir: {{ data_dir }}
 {% endif %}
 tls-san:
   - {{ inventory_hostname }}
+{% if k3s_disable_list is defined %}
+disable:
+{% for item in k3s_disable_list %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
