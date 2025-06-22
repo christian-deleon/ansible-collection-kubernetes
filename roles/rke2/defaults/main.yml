@@ -6,6 +6,7 @@ rke2_ha_server: false
 rke2_enable_selinux: true
 
 # Network Configuration
+rke2_host_ip_name: "private_ip_address" # private_ip_address | public_ip_address
 rke2_disable_ipv6: true
 rke2_cluster_cidr: 10.42.0.0/16
 rke2_service_cidr: 10.43.0.0/16

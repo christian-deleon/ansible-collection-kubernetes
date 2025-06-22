@@ -1,32 +1,45 @@
 {% if 'controlplane_master' not in group_names %}
 server: https://{{ rke2_server }}:9345
 token: {{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}
-{% endif %} # end of controlplane_master
-node-ip: {{ ansible_default_ipv4.address }}
+{% endif %}
+node-ip: {{ rke2_node_ip }}
+{% if rke2_node_name is defined %}
 node-name: {{ rke2_node_name }}
+{% endif %}
 selinux: {{ rke2_enable_selinux | lower }}
 {% if 'controlplane' in group_names %}
 cluster-cidr: {{ rke2_cluster_cidr }}
 service-cidr: {{ rke2_service_cidr }}
 {% if rke2_disable_cloud_manager | bool %}
 disable-cloud-controller: {{ rke2_disable_cloud_manager | lower }}
-{% endif %} # end of disable_cloud_manager
-advertise-address: {{ inventory_hostname }}
-tls-san:
-  - {{ inventory_hostname }}
-{% if rke2_ha_server | bool and rke2_server is defined %}
-  - {{ rke2_server }}
-{% endif %} # end of ha_server
-{% if rke2_disable_ingress_nginx | bool %}
-disable:
-  - rke2-ingress-nginx
-{% endif %} # end of disable_ingress_nginx
+{% endif %}
+advertise-address: {{ hostvars[groups['controlplane_master'][0]][rke2_host_ip_name] }}
+{% if rke2_data_dir is defined %}
+data-dir: {{ rke2_data_dir }}
+{% endif %}
 {% if rke2_taint_control_plane | bool %}
 node-taint:
   - "CriticalAddonsOnly=true:NoExecute"
-{% endif %} # end of taint_control_plane
-{% endif %} # end of controlplane
+{% endif %}
+tls-san:
+{% for host in groups['controlplane'] %}
+  - {{ hostvars[host][rke2_host_ip_name] }}
+{% endfor %}
+{% for host in groups['worker'] %}
+  - {{ hostvars[host][rke2_host_ip_name] }}
+{% endfor %}
+{% for host in rke2_additional_tls_sans %}
+  - {{ host }}
+{% endfor %}
+{% if rke2_ha_server | bool and rke2_server is defined %}
+  - {{ rke2_server }}
+{% endif %}
+{% if rke2_disable_ingress_nginx | bool %}
+disable:
+  - rke2-ingress-nginx
+{% endif %}
+{% endif %}
 {% if rke2_max_pods is defined %}
 kubelet-arg:
   - "max-pods={{ rke2_max_pods }}"
-{% endif %} # end of max_pods
+{% endif %}
