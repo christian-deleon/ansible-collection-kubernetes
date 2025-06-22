@@ -8,8 +8,8 @@ cluster-cidr: {{ k3s_cluster_cidr }}
 service-cidr: {{ k3s_service_cidr }}
 {% endif %}
 selinux: {{ k3s_enable_selinux | lower }}
-{% if data_dir is defined %}
-data-dir: {{ data_dir }}
+{% if k3s_data_dir is defined %}
+data-dir: {{ k3s_data_dir }}
 {% endif %}
 tls-san:
 {% for host in groups['controlplane'] %}
