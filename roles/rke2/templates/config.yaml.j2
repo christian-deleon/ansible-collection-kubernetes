@@ -43,3 +43,6 @@ disable:
 kubelet-arg:
   - "max-pods={{ rke2_max_pods }}"
 {% endif %}
+{% if rke2_additional_config is defined %}
+{{ rke2_additional_config | to_nice_yaml }}
+{% endif %}
