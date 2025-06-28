@@ -11,10 +11,12 @@ selinux: {{ k3s_enable_selinux | lower }}
 {% if k3s_data_dir is defined %}
 data-dir: {{ k3s_data_dir }}
 {% endif %}
+{% if k3s_additional_tls_sans is defined %}
 tls-san:
-{% for host in groups['controlplane'] %}
-  - {{ hostvars[host]['public_ip_address'] }}
+{% for host in k3s_additional_tls_sans %}
+  - {{ host }}
 {% endfor %}
+{% endif %}
 {% if k3s_disable_list is defined %}
 disable:
 {% for item in k3s_disable_list %}

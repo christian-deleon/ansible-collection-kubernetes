@@ -45,19 +45,7 @@
         name: python3-firewall
         state: present
 
-    - name: Open Firewall Ports for all nodes
-      ansible.posix.firewalld:
-        port: "{{ item }}"
-        permanent: true
-        state: enabled
-        immediate: true
-      loop:
-        - 10250/tcp
-        - 8472/udp
-        - 30000-32767/tcp
-      ignore_errors: true
-
-    - name: Open Firewall Ports for controlplane nodes
+    - name: Open K3s Firewall Ports
       ansible.posix.firewalld:
         port: "{{ item }}"
         permanent: true
@@ -65,10 +53,10 @@
         immediate: true
       loop:
         - 6443/tcp
-        - 9345/tcp
+        - 8472/udp
+        - 10250/tcp
         - 2379-2380/tcp
-        - 2381/tcp
-      when: "'controlplane' in group_names"
+        - 30000-32767/tcp
       ignore_errors: true
 
 - name: Configure Main K3s Server
