@@ -8,6 +8,16 @@
     mode: "0644"
   register: k3s_config_result
 
+- name: Copy k8s manifest files
+  ansible.builtin.copy:
+    src: "{{ k3s_manifest_files_path }}"
+    dest: /etc/rancher/k3s/manifests
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - k3s_manifest_files_path is defined
+
 - name: Gather Service Facts
   ansible.builtin.service_facts:
 
