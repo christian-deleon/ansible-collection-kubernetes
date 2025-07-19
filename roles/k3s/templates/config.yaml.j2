@@ -23,6 +23,12 @@ tls-san:
   - {{ host }}
 {% endfor %}
 {% endif %}
+{% if k3s_kubelet_arg is defined %}
+kubelet-arg:
+{% for arg in k3s_kubelet_arg %}
+  - {{ arg }}
+{% endfor %}
+{% endif %}
 {% if k3s_disable_list is defined %}
 disable:
 {% for item in k3s_disable_list %}
