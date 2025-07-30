@@ -2,7 +2,9 @@
 server: https://{{ rke2_server }}:9345
 token: {{ hostvars[groups['controlplane_master'][0]]['rke2_token']['stdout'] }}
 {% endif %}
+{% if rke2_node_ip is defined %}
 node-ip: {{ rke2_node_ip }}
+{% endif %}
 {% if rke2_node_name is defined %}
 node-name: {{ rke2_node_name }}
 {% endif %}
@@ -10,10 +12,12 @@ selinux: {{ rke2_enable_selinux | lower }}
 {% if 'controlplane' in group_names %}
 cluster-cidr: {{ rke2_cluster_cidr }}
 service-cidr: {{ rke2_service_cidr }}
+{% if rke2_advertise_address is defined %}
+advertise-address: {{ rke2_advertise_address }}
+{% endif %}
 {% if rke2_disable_cloud_manager | bool %}
 disable-cloud-controller: {{ rke2_disable_cloud_manager | lower }}
 {% endif %}
-advertise-address: {{ hostvars[groups['controlplane_master'][0]][rke2_host_ip_name] }}
 {% if rke2_data_dir is defined %}
 data-dir: {{ rke2_data_dir }}
 {% endif %}
@@ -21,16 +25,12 @@ data-dir: {{ rke2_data_dir }}
 node-taint:
   - "CriticalAddonsOnly=true:NoExecute"
 {% endif %}
+{% if rke2_additional_tls_sans is defined %}
 tls-san:
-{% for host in groups['controlplane'] %}
-  - {{ hostvars[host][rke2_host_ip_name] }}
-{% endfor %}
-{% for host in groups['worker'] %}
-  - {{ hostvars[host][rke2_host_ip_name] }}
-{% endfor %}
 {% for host in rke2_additional_tls_sans %}
   - {{ host }}
 {% endfor %}
+{% endif %}
 {% if rke2_ha_server | bool and rke2_server is defined %}
   - {{ rke2_server }}
 {% endif %}
