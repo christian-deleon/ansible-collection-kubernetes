@@ -9,9 +9,22 @@
 - name: Enable non-local IP binding
   ansible.posix.sysctl:
     name: net.ipv4.ip_nonlocal_bind
-    value: 1
+    value: "1"
     state: present
     sysctl_set: true
+    sysctl_file: /etc/sysctl.d/99-haproxy.conf
+    reload: true
+
+- name: Verify non-local IP binding is enabled
+  ansible.builtin.command: sysctl -n net.ipv4.ip_nonlocal_bind
+  register: nonlocal_bind_check
+  failed_when: nonlocal_bind_check.stdout != "1"
+  changed_when: false
+
+- name: Gather facts
+  ansible.builtin.setup:
+    gather_subset:
+      - network
 
 - name: Configure HAProxy
   ansible.builtin.template:
@@ -39,7 +52,7 @@
     name: haproxy
     state: started
     enabled: true
-  when: not haproxy_status.status.ActiveState == "active"
+  when: haproxy_status.status.ActiveState != "active"
 
 - name: Configure keepalived
   ansible.builtin.template:
@@ -79,3 +92,10 @@
       loop:
         - 9345/tcp
         - 6443/tcp
+
+    - name: Allow VRRP for Keepalived
+      ansible.posix.firewalld:
+        rich_rule: 'rule family="ipv4" source address="224.0.0.0/8" protocol value="vrrp" accept'
+        permanent: true
+        state: enabled
+        immediate: true

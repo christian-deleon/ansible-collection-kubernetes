@@ -20,7 +20,7 @@
   ansible.builtin.service_facts:
 
 - name: Start RKE2 Agent
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: rke2-agent
     state: started
     enabled: true

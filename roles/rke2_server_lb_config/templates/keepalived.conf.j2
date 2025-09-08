@@ -1,20 +1,25 @@
+vrrp_script chk_haproxy {
+    script "killall -0 haproxy"
+    interval 2
+    weight -2
+    fall 3
+    rise 2
+}
+
 vrrp_instance VI_1 {
-    state {% if inventory_hostname == groups['loadbalancer_master'][0] %}MASTER{% else %}BACKUP{% endif %}
-
-    interface {{ ansible_facts['interfaces'] | map('extract', ansible_facts) | selectattr('ipv4', 'defined') | selectattr('ipv4.address', 'equalto', inventory_hostname) | map(attribute='device') | first }}
-
+    state BACKUP
+    interface {{ ansible_default_ipv4.interface }}
     virtual_router_id 51
-
-    priority {% if inventory_hostname == groups['loadbalancer_master'][0] %}100{% else %}100 - (loop.index0 * 10){% endif %}
-
+    priority {{ 100 - ((groups['loadbalancer'] | sort).index(inventory_hostname)) * 10 }}
     advert_int 1
-
     authentication {
         auth_type PASS
         auth_pass mysecretpassword
     }
-
     virtual_ipaddress {
         {{ rke2_server }}/24
+    }
+    track_script {
+        chk_haproxy
     }
 }
