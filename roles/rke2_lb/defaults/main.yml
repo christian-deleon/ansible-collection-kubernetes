@@ -1,0 +1,75 @@
+# Optimized for small clusters (3-5 nodes) by default
+# Adjust these values for larger deployments
+
+# === REQUIRED CONFIGURATION ===
+# Virtual IP Configuration (must be set by user)
+rke2_lb_vrid: 51                # Virtual Router ID for VRRP (must be unique in network)
+# Set these in your inventory / vars file
+# rke2_server: "192.168.1.100"  # Virtual IP address for the cluster
+# rke2_server_cidr: "24"        # CIDR notation for VIP
+
+# === SMALL CLUSTER DEFAULTS (3-5 nodes, <100 concurrent connections) ===
+# These defaults work well for development and small production clusters
+
+# HAProxy Performance Settings
+rke2_lb_max_connections: 4000          # Max concurrent connections (increase to 100000 for large clusters)
+rke2_lb_buffer_size: 32768             # Buffer size for WebSockets (increase to 65536 for large clusters)
+rke2_lb_enable_multithreading: false   # Set to true for large clusters
+rke2_lb_thread_count: "{{ ansible_processor_vcpus | default(2) }}"  # Only used if multithreading enabled
+
+# Load Balancing Configuration
+rke2_lb_balance_algorithm: "leastconn"  # Better for WebSockets than roundrobin
+rke2_lb_enable_persistence: true        # Session stickiness (critical for WebSockets)
+rke2_lb_stick_table_size: "1k"         # Increase to "10k" for large clusters
+rke2_lb_stick_expire: "8h"             # Session persistence duration
+
+# Timeout Settings (in seconds/milliseconds)
+rke2_lb_timeout_connect: "10s"         # Connection timeout
+rke2_lb_timeout_client: "86400s"       # Client timeout (24h for WebSockets)
+rke2_lb_timeout_server: "86400s"       # Server timeout (24h for WebSockets)
+rke2_lb_timeout_tunnel: "86400s"       # Tunnel timeout (24h for WebSockets)
+
+# Health Check Settings
+rke2_lb_check_interval: "3s"           # Health check interval (increase to "5s" for large clusters)
+rke2_lb_check_fall: 3                  # Checks before marking down
+rke2_lb_check_rise: 2                  # Checks before marking up
+rke2_lb_server_maxconn: 250            # Max connections per server (increase to 1000 for large clusters)
+rke2_lb_supervisor_maxconn: 100        # Max connections for supervisor (increase to 500 for large clusters)
+
+# Health Check Configuration
+# RKE2 API servers return HTTP/1.0 401 Unauthorized for /healthz without authentication
+# This is the expected behavior and indicates the server is healthy
+
+# === SYSTEM TUNING ===
+# TCP Keepalive Settings (for WebSocket connections)
+rke2_lb_tcp_keepalive_time: "600"      # Start keepalive after 10 minutes
+rke2_lb_tcp_keepalive_probes: "9"      # Number of probes
+rke2_lb_tcp_keepalive_intvl: "75"      # Interval between probes
+
+# Connection Tracking
+rke2_lb_conntrack_timeout: "86400"     # Connection timeout (24 hours)
+rke2_lb_conntrack_max: "131072"        # Max tracked connections (increase to 524288 for large clusters)
+rke2_lb_socket_buffer_size: "67108864" # Socket buffer size (increase to 134217728 for large clusters)
+
+# === KEEPALIVED CONFIGURATION ===
+rke2_lb_keepalived_password: "ChangeMe123!"  # CHANGE THIS! Use vault in production
+rke2_lb_keepalived_priority_base: 100        # Base priority for VRRP
+rke2_lb_keepalived_check_interval: 2         # Health check interval in seconds
+rke2_lb_keepalived_advert_int: 1             # VRRP advertisement interval
+rke2_lb_keepalived_preempt_delay: 30         # Delay before preemption
+
+# === OPTIONAL FEATURES ===
+rke2_lb_enable_stats: false             # Enable HAProxy stats page
+
+# === LARGE CLUSTER RECOMMENDATIONS ===
+# For clusters with 10+ nodes or >1000 concurrent connections, adjust:
+#
+# rke2_lb_max_connections: 100000
+# rke2_lb_buffer_size: 65536
+# rke2_lb_enable_multithreading: true
+# rke2_lb_stick_table_size: "10k"
+# rke2_lb_check_interval: "5s"
+# rke2_lb_server_maxconn: 1000
+# rke2_lb_supervisor_maxconn: 500
+# rke2_lb_conntrack_max: "524288"
+# rke2_lb_socket_buffer_size: "134217728"

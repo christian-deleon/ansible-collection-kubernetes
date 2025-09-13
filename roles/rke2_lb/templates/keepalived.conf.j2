@@ -1,0 +1,57 @@
+global_defs {
+    enable_script_security
+    script_user root
+    router_id {{ ansible_hostname }}
+}
+
+# Script to check HAProxy health
+vrrp_script check_haproxy {
+    script "/usr/local/bin/check_haproxy.sh"
+    interval {{ rke2_lb_keepalived_check_interval }}
+    weight 2
+    rise 2
+    fall 2
+    timeout 2
+}
+
+# VRRP instance for Kubernetes API VIP
+vrrp_instance VI_K8S_API {
+    # Determine state based on priority
+    {% if groups['loadbalancer'].index(inventory_hostname) == 0 %}
+    state MASTER
+    priority {{ rke2_lb_keepalived_priority_base + 1 }}
+    {% else %}
+    state BACKUP
+    priority {{ rke2_lb_keepalived_priority_base - groups['loadbalancer'].index(inventory_hostname) }}
+    {% endif %}
+
+    # Network interface
+    interface {{ ansible_default_ipv4.interface }}
+
+    # Virtual router ID (must be unique in network)
+    virtual_router_id {{ rke2_lb_vrid }}
+
+    # Advertisement interval
+    advert_int {{ rke2_lb_keepalived_advert_int }}
+
+    # Preemption settings for faster failover
+    preempt_delay {{ rke2_lb_keepalived_preempt_delay }}
+    garp_master_delay 1
+    garp_master_repeat 3
+
+    # Authentication
+    authentication {
+        auth_type PASS
+        auth_pass {{ rke2_lb_keepalived_password }}
+    }
+
+    # Virtual IP address
+    virtual_ipaddress {
+        {{ rke2_server }}/{{ rke2_server_cidr }} dev {{ ansible_default_ipv4.interface }}
+    }
+
+    # Track HAProxy health
+    track_script {
+        check_haproxy
+    }
+}

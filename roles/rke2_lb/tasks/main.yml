@@ -1,0 +1,125 @@
+---
+- name: Install required packages
+  ansible.builtin.package:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+
+- name: Configure system-level TCP tuning for WebSockets
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: true
+    sysctl_file: /etc/sysctl.d/99-rke2-lb.conf
+    reload: true
+  loop:
+    - { key: "net.ipv4.ip_nonlocal_bind", value: "1" }
+    - { key: "net.ipv4.tcp_keepalive_time", value: "{{ rke2_lb_tcp_keepalive_time }}" }
+    - { key: "net.ipv4.tcp_keepalive_probes", value: "{{ rke2_lb_tcp_keepalive_probes }}" }
+    - { key: "net.ipv4.tcp_keepalive_intvl", value: "{{ rke2_lb_tcp_keepalive_intvl }}" }
+    - { key: "net.netfilter.nf_conntrack_tcp_timeout_established", value: "{{ rke2_lb_conntrack_timeout }}" }
+    - { key: "net.netfilter.nf_conntrack_max", value: "{{ rke2_lb_conntrack_max }}" }
+    - { key: "net.core.rmem_max", value: "{{ rke2_lb_socket_buffer_size }}" }
+    - { key: "net.core.wmem_max", value: "{{ rke2_lb_socket_buffer_size }}" }
+
+- name: Verify critical sysctl settings
+  ansible.builtin.command: "sysctl -n {{ item }}"
+  register: sysctl_check
+  failed_when: sysctl_check.rc != 0
+  changed_when: false
+  loop:
+    - net.ipv4.ip_nonlocal_bind
+
+- name: Gather network facts
+  ansible.builtin.setup:
+    gather_subset:
+      - network
+
+- name: Configure HAProxy for RKE2 with WebSocket support
+  ansible.builtin.template:
+    src: templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Reload HAProxy
+
+- name: Validate HAProxy configuration
+  ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
+  register: haproxy_config_check
+  failed_when: haproxy_config_check.rc != 0
+  changed_when: false
+
+- name: Create keepalived check script
+  ansible.builtin.template:
+    src: templates/check_haproxy.sh.j2
+    dest: /usr/local/bin/check_haproxy.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure keepalived for high availability
+  ansible.builtin.template:
+    src: templates/keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  notify: Reload keepalived
+
+- name: Enable and start HAProxy service
+  ansible.builtin.systemd:
+    name: haproxy
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Enable and start keepalived service
+  ansible.builtin.systemd:
+    name: keepalived
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Configure firewall rules
+  when: >
+    'firewalld.service' in ansible_facts.services and
+    ansible_facts.services['firewalld.service'].state is defined and
+    ansible_facts.services['firewalld.service'].state == 'running'
+  block:
+    - name: Install python3-firewall
+      ansible.builtin.package:
+        name: python3-firewall
+        state: present
+
+    - name: Open required ports
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - 6443/tcp   # Kubernetes API
+        - 9345/tcp   # RKE2 supervisor
+
+    - name: Allow VRRP for Keepalived
+      ansible.posix.firewalld:
+        rich_rule: 'rule family="ipv4" source address="224.0.0.0/8" protocol value="vrrp" accept'
+        permanent: true
+        state: enabled
+        immediate: true
+
+- name: Wait for HAProxy to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: "{{ rke2_server }}"
+    delay: 5
+    timeout: 60
+    state: started
