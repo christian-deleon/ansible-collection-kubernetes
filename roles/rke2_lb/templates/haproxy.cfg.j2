@@ -14,8 +14,8 @@ global
     tune.bufsize {{ rke2_lb_buffer_size }}
     tune.maxrewrite 16384
 
-    # Multi-threading (only for larger clusters)
     {% if rke2_lb_enable_multithreading %}
+    # Multi-threading (only for larger clusters)
     nbthread {{ rke2_lb_thread_count }}
     {% endif %}
 
@@ -24,6 +24,9 @@ defaults
     log global
     option tcplog
     option dontlognull
+{% if not rke2_lb_enable_verbose_logging | default(false) %}
+    option dontlog-normal   # Don't log successful health checks
+{% endif %}
 
     # Critical timeout settings for WebSocket support
     timeout connect {{ rke2_lb_timeout_connect }}
@@ -39,20 +42,31 @@ defaults
     # Connection behavior
     retries 3
     option redispatch   # Redistribute on failure
-    maxconn {{ rke2_lb_max_connections }}
 
-# Statistics endpoint (optional)
 {% if rke2_lb_enable_stats %}
-stats enable
-stats uri /stats
-stats refresh 30s
+# Statistics endpoint
+listen stats
+    bind *:{{ rke2_lb_stats_port | default(8404) }}
+    {% if rke2_lb_stats_bind_vip | default(false) %}
+    bind {{ rke2_server }}:{{ rke2_lb_stats_port | default(8404) }}
+    {% endif %}
+    stats enable
+    stats uri {{ rke2_lb_stats_uri | default('/stats') }}
+    stats refresh {{ rke2_lb_stats_refresh | default('30s') }}
+    {% if rke2_lb_stats_auth_user is defined and rke2_lb_stats_auth_pass is defined %}
+    stats auth {{ rke2_lb_stats_auth_user }}:{{ rke2_lb_stats_auth_pass }}
+    {% endif %}
+    stats hide-version
+    stats show-legends
+    stats admin if TRUE
 {% endif %}
 
 # Kubernetes API Server Frontend (with WebSocket support)
 frontend k8s-api
+    bind *:6443
+    {% if rke2_lb_bind_vip | default(true) %}
     bind {{ rke2_server }}:6443
-    mode tcp
-    option tcplog
+    {% endif %}
 
     # TCP inspection for better connection handling
     tcp-request inspect-delay 5s
@@ -62,18 +76,18 @@ frontend k8s-api
 
 # RKE2 Supervisor/Registration Endpoint
 frontend rke2-supervisor
+    bind *:9345
+    {% if rke2_lb_bind_vip | default(true) %}
     bind {{ rke2_server }}:9345
-    mode tcp
-    option tcplog
+    {% endif %}
     default_backend rke2-supervisor-backend
 
 # Kubernetes API Backend with WebSocket optimization
 backend k8s-api-backend
-    mode tcp
     balance {{ rke2_lb_balance_algorithm }}
 
-    # Session persistence - CRITICAL for WebSockets
 {% if rke2_lb_enable_persistence %}
+    # Session persistence - CRITICAL for WebSockets
     stick-table type ip size {{ rke2_lb_stick_table_size }} expire {{ rke2_lb_stick_expire }}
     stick on src
 {% endif %}
@@ -96,7 +110,6 @@ backend k8s-api-backend
 
 # RKE2 Supervisor Backend
 backend rke2-supervisor-backend
-    mode tcp
     balance {{ rke2_lb_balance_algorithm }}
 
 {% if rke2_lb_enable_persistence %}

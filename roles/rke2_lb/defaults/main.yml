@@ -36,9 +36,22 @@ rke2_lb_check_rise: 2                  # Checks before marking up
 rke2_lb_server_maxconn: 250            # Max connections per server (increase to 1000 for large clusters)
 rke2_lb_supervisor_maxconn: 100        # Max connections for supervisor (increase to 500 for large clusters)
 
-# Health Check Configuration
-# RKE2 API servers return HTTP/1.0 401 Unauthorized for /healthz without authentication
-# This is the expected behavior and indicates the server is healthy
+# === LOGGING CONFIGURATION ===
+rke2_lb_enable_verbose_logging: false  # Set to true for troubleshooting
+
+# === STATISTICS CONFIGURATION ===
+rke2_lb_enable_stats: true             # Enable HAProxy stats page
+rke2_lb_stats_port: 8404               # Stats page port
+rke2_lb_stats_uri: "/stats"            # Stats page URI
+rke2_lb_stats_refresh: "30s"           # Auto-refresh interval
+rke2_lb_stats_bind_vip: false          # Additionally bind stats to VIP (only when VIP is stable)
+# Optional authentication for stats (use Ansible Vault for passwords)
+# rke2_lb_stats_auth_user: "admin"
+# rke2_lb_stats_auth_pass: "password"
+
+# === VIP BINDING CONFIGURATION ===
+rke2_lb_bind_vip: false                # Bind main services to VIP (enable after initial setup)
+# Set to true once the cluster is stable and keepalived VIP is working
 
 # === SYSTEM TUNING ===
 # TCP Keepalive Settings (for WebSocket connections)
@@ -57,9 +70,6 @@ rke2_lb_keepalived_priority_base: 100        # Base priority for VRRP
 rke2_lb_keepalived_check_interval: 2         # Health check interval in seconds
 rke2_lb_keepalived_advert_int: 1             # VRRP advertisement interval
 rke2_lb_keepalived_preempt_delay: 30         # Delay before preemption
-
-# === OPTIONAL FEATURES ===
-rke2_lb_enable_stats: false             # Enable HAProxy stats page
 
 # === LARGE CLUSTER RECOMMENDATIONS ===
 # For clusters with 10+ nodes or >1000 concurrent connections, adjust:

@@ -1,0 +1,59 @@
+---
+# Task file to enable VIP binding after initial deployment
+# Run this with: ansible-playbook -i inventories/develop config-rke2.yml -t rke2_lb_vip
+
+- name: Check if VIP is available on any node
+  ansible.builtin.shell: |
+    ip addr show | grep -q "{{ rke2_server }}" && echo "VIP_ACTIVE" || echo "VIP_NOT_ACTIVE"
+  register: vip_check
+  changed_when: false
+  failed_when: false
+
+- name: Display VIP status
+  ansible.builtin.debug:
+    msg: "VIP {{ rke2_server }} status on {{ inventory_hostname }}: {{ vip_check.stdout }}"
+  when: vip_check.stdout == "VIP_ACTIVE"
+
+- name: Verify at least one node has VIP
+  ansible.builtin.assert:
+    that:
+      - vip_check.stdout == "VIP_ACTIVE"
+    fail_msg: "VIP {{ rke2_server }} is not active on any node. Ensure keepalived is running."
+  run_once: true
+  any_errors_fatal: true
+  when: groups['loadbalancer'] | map('extract', hostvars, 'vip_check') | selectattr('stdout', 'equalto', 'VIP_ACTIVE') | list | length > 0
+
+- name: Enable VIP binding in HAProxy configuration
+  ansible.builtin.template:
+    src: templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  vars:
+    rke2_lb_bind_vip: true
+    rke2_lb_stats_bind_vip: true
+  notify: Reload HAProxy
+
+- name: Validate new HAProxy configuration
+  ansible.builtin.command: haproxy -c -f /etc/haproxy/haproxy.cfg
+  register: haproxy_vip_config_check
+  failed_when: haproxy_vip_config_check.rc != 0
+  changed_when: false
+
+- name: Reload HAProxy with VIP bindings
+  ansible.builtin.systemd:
+    name: haproxy
+    state: reloaded
+  when: haproxy_vip_config_check is succeeded
+
+- name: Verify HAProxy is listening on VIP
+  ansible.builtin.wait_for:
+    port: 6443
+    host: "{{ rke2_server }}"
+    delay: 3
+    timeout: 30
+    state: started
+  delegate_to: "{{ groups['loadbalancer'][0] }}"
+  run_once: true

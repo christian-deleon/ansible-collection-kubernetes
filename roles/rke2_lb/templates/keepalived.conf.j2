@@ -4,9 +4,9 @@ global_defs {
     router_id {{ ansible_hostname }}
 }
 
-# Script to check HAProxy health
-vrrp_script check_haproxy {
-    script "/usr/local/bin/check_haproxy.sh"
+# Script to check load balancer health
+vrrp_script lb_health_check {
+    script "/usr/local/bin/lb_health_check.sh"
     interval {{ rke2_lb_keepalived_check_interval }}
     weight 2
     rise 2
@@ -50,8 +50,8 @@ vrrp_instance VI_K8S_API {
         {{ rke2_server }}/{{ rke2_server_cidr }} dev {{ ansible_default_ipv4.interface }}
     }
 
-    # Track HAProxy health
+    # Track load balancer health
     track_script {
-        check_haproxy
+        lb_health_check
     }
 }
