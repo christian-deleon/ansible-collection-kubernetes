@@ -10,8 +10,12 @@ node-name: {{ rke2_node_name }}
 {% endif %}
 selinux: {{ rke2_enable_selinux | lower }}
 {% if 'controlplane' in group_names %}
+{% if rke2_cluster_cidr is defined %}
 cluster-cidr: {{ rke2_cluster_cidr }}
+{% endif %}
+{% if rke2_service_cidr is defined %}
 service-cidr: {{ rke2_service_cidr }}
+{% endif %}
 {% if rke2_advertise_address is defined %}
 advertise-address: {{ rke2_advertise_address }}
 {% endif %}
