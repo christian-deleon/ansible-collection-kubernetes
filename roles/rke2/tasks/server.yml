@@ -32,13 +32,17 @@
     mode: "0644"
   register: rke2_config_result
 
+- name: Check if RKE2 binary exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/rke2
+  register: rke2_binary
+
 - name: Run RKE2 Server Install Script # noqa: command-instead-of-module
   ansible.builtin.shell: curl -sfL https://get.rke2.io | sh - 2>&1 | tee /var/log/rke2-install.log
   environment:
     INSTALL_RKE2_VERSION: "{{ rke2_version | default(omit) }}"
     INSTALL_RKE2_TYPE: server
-  args:
-    creates: /var/lib/rancher/rke2
+  when: not rke2_binary.stat.exists
 
 - name: Gather Service Facts
   ansible.builtin.service_facts:

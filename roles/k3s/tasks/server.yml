@@ -18,6 +18,11 @@
   when:
     - k3s_manifest_files_path is defined
 
+- name: Check if K3s binary exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
 - name: Gather Service Facts
   ansible.builtin.service_facts:
 
@@ -29,8 +34,7 @@
   ansible.builtin.shell: curl -sfL https://get.k3s.io | sh - 2>&1 | tee /var/log/k3s-install.log
   environment:
     INSTALL_K3S_VERSION: "{{ k3s_version | default(omit) }}"
-  args:
-    creates: /var/lib/rancher/k3s
+  when: not k3s_binary.stat.exists
 
 - name: Restart K3s Server
   ansible.builtin.systemd:
